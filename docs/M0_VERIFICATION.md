@@ -22,12 +22,22 @@ Date: 2026-10-25. Scope: M0 only. Implementation and portable checks complete; n
 | Live local API                                     | `/health/live` returned 200 with shared health contract                                                                    |
 | Compiled server smoke                              | Started separately, health passed, SIGTERM exited with code 0                                                              |
 | Browser supplemental review                        | All four screens at 390×844; compact 320×568 navigation/Results and 430×932 Setup reviewed; mode/category behavior checked |
-| GitHub-hosted Actions execution                    | Not run: commits remain local; workflow is included                                                                        |
+| GitHub-hosted Actions execution                    | Not run: push is blocked on GitHub authentication; workflow is included                                                    |
+
+## GitHub publication follow-up
+
+Remote verified as `https://github.com/hasanzahran/typeduel.git`. The remote still advertises no refs. Local `main` contains the approved document baseline (`82d3d23`); `codex/m0-foundation` adds the implementation (`fcfe1dd`). Publishing the existing baseline first will provide the PR base without rewriting history.
+
+The push retry failed because Git could not read a GitHub username. A temporary official GitHub CLI is available for browser-based authorization; authorization is pending. No branch has been pushed, PR created, or hosted CI result verified yet. Successful publication and CI must be recorded here before M0 acceptance can be considered complete.
 
 ## Native checks not available
 
+- Acceptance follow-up on 2026-10-25: macOS 15.6.1; approximately 23 GiB free on the data volume. Workspace remains writable. No large dependencies were installed and no system-wide configuration was changed.
 - Xcode is not installed; the active developer directory is Command Line Tools. iOS simulator launch, native iOS compilation, VoiceOver, keyboard/safe-area validation, and native screenshots could not run.
 - Android Studio/SDK/emulator and Java runtime are absent; `adb` is unavailable. Android launch/build, TalkBack, native keyboard/IME behavior, and native screenshots could not run.
+- `xcodebuild -version` reports that full Xcode is required; `xcrun simctl list devices available` cannot find `simctl`; `/usr/libexec/java_home -V` reports no Java runtime. No usable Android SDK, emulator, or bundled JDK was found in the standard installation locations.
+- Expo 58 requires Xcode 26.4 or newer for native compilation ([Expo SDK reference](https://docs.expo.dev/versions/latest/)). Apple's Xcode 26.4.1 requires macOS 26.2 or newer ([Xcode system requirements](https://developer.apple.com/xcode/system-requirements)). This Mac therefore needs a compatible macOS/Xcode installation or another build host for the supported native compilation path. Prebuilt Expo Go on a physical device or a compatible simulator is a separate potential preview path, not a completed check.
+- Large Android SDK, emulator image, and JDK installation requires the user's approval. No approval has been received for those downloads. No native launch or screenshot is claimed while tooling is absent.
 - No physical-device testing, enlarged native font testing, or hardware keyboard testing was possible.
 - Production bundle export is not a native binary build. Browser visual review is supplementary, not native acceptance evidence. No native screenshot files are claimed or fabricated.
 
