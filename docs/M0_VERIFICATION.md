@@ -13,7 +13,7 @@ Date: 2026-10-25 (America/Los_Angeles). Scope: M0 only. Implementation, publicat
 | Strict TypeScript                                  | Passed for contracts, server, mobile                                                                                       |
 | Vitest contracts                                   | 5 tests passed                                                                                                             |
 | Vitest Fastify integration/configuration           | 4 tests passed                                                                                                             |
-| Jest mobile UI/API configuration                   | 7 tests passed; process exits normally                                                                                     |
+| Jest mobile UI/API configuration                   | 8 tests passed; process exits normally                                                                                     |
 | Production builds                                  | Contracts + server compiled; iOS/Android Hermes and web bundles exported                                                   |
 | Release fixture scan                               | Passed; fixture sentinel/banner absent from production bundles                                                             |
 | Expo dependency compatibility                      | Passed                                                                                                                     |
@@ -103,6 +103,58 @@ adb -s emulator-5554 shell am start -a android.intent.action.VIEW -d exp://127.0
 ```
 
 The `emulator-5554` serial assumes this is the first running emulator; use `adb devices` to confirm. Expo Go is already installed in this AVD. No account or production service is required.
+
+## Final keyboard and iOS acceptance follow-up
+
+### Minimal M0 input changes
+
+The only app change in this follow-up adds `autoComplete="off"`, `importantForAutofill="no"`, and `smartInsertDelete={false}` to the spelling field. Existing `autoCorrect={false}`, `spellCheck={false}`, `autoCapitalize="none"` and `contextMenuHidden` remain. The regression test asserts this assistance policy; it does not simulate or certify an OS keyboard.
+
+The installed RN 0.88 implementation maps `autoComplete="off"` to iOS `textContentType="none"` and Android's autofill exclusion. We deliberately do not also set `textContentType`: [React Native's TextInput reference](https://reactnative.dev/docs/textinput) advises against setting both. `spellCheck` and `smartInsertDelete` are iOS-specific; Android receives the no-suggestions flag through `autoCorrect={false}`. There is no exposed `inlinePredictionType` prop in the installed TextInput API. No dependencies, keyboard type, layout, gameplay, or OS keyboard preferences changed.
+
+### Actual keyboard findings
+
+Retested on the existing API 37 emulator with Gboard `17.2.2.895242737-preload-arm64-v8a`, English (US), at the standard size. Gboard is the only installed full text keyboard; the other listed input service is Google's voice input. No alternate keyboards were installed.
+
+- Actual taps on native letter keys entered `preview`. Gboard still offered `preview` / `previews` despite current `inputType=0x280001` (including no-suggestions), `imeOptions=0x4` (Send), and the explicit autofill settings. See [post-change keyboard capture](verification/android/keyboard-fairness.png). Tapping the `previews` suggestion changed the field to `previews `, confirming it is functional assistance, not decorative UI; see [accepted suggestion](verification/android/keyboard-suggestion-accepted.png). Gboard Send still produced the explicit preview-only/no-score notice, verified after dismissing the keyboard.
+- The timer, field, Submit button and attempts counter remain above the keyboard with the predictive strip visible. This corroborates the earlier compact/large-text Android evidence; those earlier captures are retained with their original provenance.
+- No automatic replacement occurred in the observed `preview` entry. This limited sample does not certify autocorrection across words, languages or keyboards. The flags are requests to the platform, not enforcement against an IME.
+- Gboard still exposes microphone/clipboard tools. `contextMenuHidden` cannot remove an IME's own clipboard, dictation, text replacement or external assistance. Autofill suppression is configured and covered by the component test; a populated password manager/autofill service was not tested.
+- iOS keyboard behavior, other Android IMEs, physical hardware keyboards and full screen-reader typing remain untested. Do not claim assistance-free competitive input.
+
+### iOS availability and prerequisites
+
+No iPhone was detected in the USB inventory. Physical iPhone availability over Wi-Fi was requested from the user and is not yet confirmed. `xcode-select -p` points to `/Library/Developer/CommandLineTools`; `xcodebuild -version` requires full Xcode, and `xcrun simctl` / `xcrun devicectl` are unavailable. Consequently, no iOS screenshots or native iOS pass results can be supplied.
+
+The preferred next step is an available physical iPhone with compatible Expo Go, on the same Wi-Fi as this Mac. Start `pnpm dev`, scan Metro's QR code with the iPhone camera, and open Expo Go. A physical Expo Go preview does not require locally installing Xcode. SDK 58 supports iOS 16.4+; verify the installed Expo Go supports SDK 58. Local API localhost URLs are device-relative, so the Android ADB-reverse backend check is not proof of iPhone connectivity.
+
+For Simulator preview, full Xcode, an installed iOS Simulator runtime and a compatible prebuilt Expo Go simulator app are needed. [Apple lists Xcode 26.3 as compatible with macOS 15.6](https://developer.apple.com/xcode/system-requirements), so this is a possible preview path on the current macOS 15.6.1, subject to verifying the prebuilt app/runtime combination. It has not been installed or proven. Building SDK 58 from source instead requires [Xcode 26.4+](https://docs.expo.dev/versions/latest/); Xcode 26.4.1 requires macOS 26.2+. Only about 9.9 GiB is free on the internal volume. Do not start a large Xcode/runtime installation or macOS upgrade without approval and a storage plan.
+
+| iOS acceptance item                                                     | Result                                                                                                       |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Home, Setup, Gameplay, Results vs approved PNGs                         | Blocked: no available iOS runtime/device; no screenshots                                                     |
+| Navigation and safe areas, including notch/home indicator               | Not run                                                                                                      |
+| Keyboard closed/open, timer/composer visibility, compact and large text | Not run; Android success does not prove iOS success                                                          |
+| Autocorrect, prediction, spellcheck, autofill, Send and paste behavior  | Not run; only source configuration and portable tests checked                                                |
+| VoiceOver labels/focus, Dynamic Type, minimum 44 pt targets             | Not run on iOS                                                                                               |
+| Regression from Android keyboard fix                                    | Unverified natively; iOS still uses KAV `padding`, but shared timer/composer changes need actual iOS testing |
+
+On the available iPhone, test each route and return navigation; capture all four screens plus keyboard-open Gameplay at normal and large text; inspect safe areas, scrolling, mock labels, approved charcoal/teal hierarchy and touch targets. With prediction/autocorrect enabled in OS settings, type intentional misspellings and test suggestions, Send, selection/paste and any autofill UI. Traverse controls using VoiceOver, checking labels, selected/disabled states and focus order. Record device/iOS/Expo Go/keyboard versions and compare screenshots with `docs/design/mockups/`. This is a pending checklist, not executed evidence.
+
+### M1 review proposal only: accessible controlled keyboard
+
+If the product requires zero OS predictive assistance, consider an in-app keyboard with no OS IME connection for the competitive answer buffer. This is **not implemented or approved** and would amend the explicit native-keyboard policy in `UI_UX_DESIGN.md`; M1 has not started.
+
+The proposal should include individually labeled semantic key buttons, Backspace and Submit, a readable answer buffer, stable focus order, VoiceOver/TalkBack and switch-control support, high contrast, scalable labels and layouts, and minimum 44 pt iOS / 48 dp Android touch targets. A full QWERTY row cannot fit 48 dp keys on a compact 360 dp display, so review a compact alternative (for example paged/fewer-column layouts) with accessibility users before choosing a design. Do not shrink targets or disable assistive technology to fit. Define supported languages/diacritics and hardware-keyboard handling explicitly; hiding the soft keyboard alone leaves native text injection paths open. Review fairness and accessible input accommodations together. Test compact screens, large text, screen readers and real devices before adopting it. Even a controlled keyboard cannot prevent another device or other external help.
+
+### Final acceptance decision
+
+`pnpm check` passed after the input changes: formatting, ESLint, import boundaries, token drift, strict types, **17 tests** (contracts 5, server 4, mobile 8), contracts/server builds, all three production exports and fixture exclusion. `pnpm expo:check` passed dependency compatibility and Expo Doctor **20/20**. No standalone native binary was built. GitHub Actions [run 40264544293](https://github.com/hasanzahran/typeduel/actions/runs/40264544293) passed every quality and compatibility step for code/evidence commit `9c329561a24306f324dbac6e19999273f9ca0cfc`. This report is published in a subsequent documentation-only commit; its current checks are available on [PR #1](https://github.com/hasanzahran/typeduel/pull/1), which remains open and unmerged. History was preserved.
+
+- **Pass:** M0 foundation, portable checks, Android four-screen preview/navigation, and recorded Android keyboard/safe-area evidence.
+- **Block complete cross-platform M0 acceptance:** native iOS validation, design comparison, accessibility smoke and screenshots are missing.
+- **Block any claim of strict keyboard fairness:** Gboard predictions persist. Product review must explicitly accept this documented native-IME limitation for the noncompetitive M0 preview or revise the input policy in a later approved milestone.
+- **Not done / not authorized:** merge, M1 implementation, custom keyboard, new large system installations or paid builds.
 
 ## Remaining acceptance gaps
 
