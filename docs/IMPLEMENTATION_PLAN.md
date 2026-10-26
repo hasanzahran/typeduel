@@ -1,7 +1,8 @@
-# TypeDuel — Codex Implementation Plan v1.0
+# TypeDuel — Codex Implementation Plan v1.1
 
 **Date:** October 25, 2026  
-**Status:** Engineering handoff ready; no code has been implemented yet  
+**Status:** M0 implemented; native iOS acceptance pending. M1 has not started
+
 **Sources of truth:** TypeDuel PRD v0.4, System Design v1.2, UI/UX Design v1.0.
 
 ## Build strategy
@@ -26,10 +27,11 @@ Deliverables:
 - Development-only navigation of the four main screens using **clearly marked mock data**.
 
 Acceptance:
-- iOS simulator / Android emulator open the same home shell with correct theme.
+- A physical iPhone with compatible Expo Go (preferred), or iOS Simulator, and an Android environment open the same home shell with the correct theme. Validate all four screens, navigation, keyboard layout, safe areas and basic accessibility; retain native screenshots.
 - `pnpm lint`, `pnpm typecheck`, and `pnpm test` pass.
 - UI screenshots show no broken layouts at small/large screen widths.
 - `.env.example` exists; secrets are not checked in; README startup succeeds.
+- Record OS keyboard assistance limitations and keep supported disabling flags in place. The owner accepts the documented Gboard prediction limitation for the M0 UI foundation; complete resolution belongs to M1 gameplay and does not block M0. Native iOS validation remains an M0 acceptance gate.
 
 ### M1 — Private real-time match vertical slice
 
@@ -41,12 +43,16 @@ Deliverables:
 - A small **development-only approved test word/audio fixture**; never ship hardcoded secret answer in the client.
 - Submissions validated server-side, three counted attempts with idempotent attempt IDs.
 - Basic game UI wired to real server results, basic reconnect/snapshot.
+- Resolve keyboard assistance as an M1 gameplay requirement: autocorrection, prediction, spellcheck, autofill, clipboard/dictation and text-replacement paths must be evaluated for all supported competitive input methods. Preserve the documented M0 Gboard evidence as a regression case.
+- Evaluate an accessible custom in-game keyboard against native-input alternatives, including consistent iOS/Android behavior, spelling fairness, language/diacritic support, compact/large-text layouts, physical hardware keyboards and input injection paths, VoiceOver/TalkBack, switch access, focus order and minimum touch targets. Record the recommendation, test matrix and tradeoffs before implementation. This planning addition authorizes evaluation in M1 only; it does not start M1 or approve a custom keyboard. Changing the current native-keyboard UI policy requires design review.
 
 Acceptance:
 - Two real devices/emulators see identical results over repeated five-round matches.
 - A replayed attempt ID does not consume a second attempt.
 - Early/late/correct/incorrect submissions are rejected/accepted deterministically.
 - Server-simulated network delay and disconnect do not create contradictory scores.
+- The approved competitive input approach resolves the observed Gboard prediction issue and passes equivalent iOS/Android spelling-fairness checks on supported keyboards, including hardware input. Document remaining external-assistance limits without claiming tamper-proof anti-cheat.
+- Accessibility tests cover screen readers, switch access, large text, contrast, focus order, reachable controls and compact-screen target sizes. No custom keyboard is implemented before its design and accessibility approach are reviewed; M1 acceptance requires evidence for the chosen approach.
 
 ### M2 — Curated words + offline audio pipeline
 
