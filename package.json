@@ -1,0 +1,39 @@
+{
+  "name": "typeduel",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.15.0",
+  "engines": {
+    "node": ">=24.13.0 <25"
+  },
+  "scripts": {
+    "dev": "pnpm build:contracts && pnpm -r --parallel --filter @typeduel/contracts --filter @typeduel/server --filter @typeduel/mobile dev",
+    "dev:mobile": "pnpm build:contracts && pnpm --filter @typeduel/mobile dev",
+    "dev:server": "pnpm build:contracts && pnpm --filter @typeduel/server dev",
+    "ios": "pnpm build:contracts && pnpm --filter @typeduel/mobile ios",
+    "android": "pnpm build:contracts && pnpm --filter @typeduel/mobile android",
+    "web": "pnpm build:contracts && pnpm --filter @typeduel/mobile web",
+    "tokens:generate": "node scripts/tokens.mjs",
+    "tokens:check": "node scripts/tokens.mjs --check",
+    "lint": "eslint . && node scripts/boundaries.mjs && pnpm tokens:check",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "build:contracts": "pnpm --filter @typeduel/contracts build",
+    "typecheck": "pnpm build:contracts && pnpm -r typecheck",
+    "test": "pnpm build:contracts && pnpm -r test",
+    "build": "pnpm build:contracts && pnpm --filter @typeduel/server build && pnpm --filter @typeduel/mobile build && node scripts/check-release.mjs",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "expo:check": "pnpm --filter @typeduel/mobile exec expo install --check && pnpm --filter @typeduel/mobile exec expo-doctor"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.13.0",
+    "typescript-eslint": "8.72.0",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3",
+    "@types/node": "24.10.0",
+    "vitest": "5.0.5",
+    "vite": "8.3.5"
+  }
+}

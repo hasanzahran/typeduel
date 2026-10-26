@@ -1,0 +1,33 @@
+name: M0 quality
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: m0-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Install pinned pnpm
+        run: npm install --global pnpm@12.15.0
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Formatting, lint, types, tests, builds and preview isolation
+        run: pnpm check
+        env:
+          CI: '1'
+          EXPO_NO_TELEMETRY: '1'
+      - name: Expo dependency compatibility
+        run: pnpm expo:check
+        env:
+          CI: '1'
+          EXPO_NO_TELEMETRY: '1'
