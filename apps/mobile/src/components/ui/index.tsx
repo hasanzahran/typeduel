@@ -261,6 +261,9 @@ export function TypingComposer({
         editable={enabled && attempts > 0 && !pending}
         autoCorrect={false}
         spellCheck={false}
+        autoComplete="off"
+        importantForAutofill="no"
+        smartInsertDelete={false}
         autoCapitalize="none"
         contextMenuHidden
         keyboardAppearance="dark"

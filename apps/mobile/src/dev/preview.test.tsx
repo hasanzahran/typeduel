@@ -109,6 +109,17 @@ test('return key shares the submit callback and pending input is locked', async 
   await fireEvent(screen.getByLabelText('Your spelling'), 'submitEditing');
   expect(submit).toHaveBeenCalledTimes(1);
 });
+test('spelling input requests no keyboard assistance or autofill', async () => {
+  await mount(<Game />);
+  const input = screen.getByLabelText('Your spelling');
+  expect(input).toHaveProp('autoCorrect', false);
+  expect(input).toHaveProp('spellCheck', false);
+  expect(input).toHaveProp('autoComplete', 'off');
+  expect(input).toHaveProp('importantForAutofill', 'no');
+  expect(input).toHaveProp('smartInsertDelete', false);
+  expect(input).toHaveProp('autoCapitalize', 'none');
+  expect(input).toHaveProp('contextMenuHidden', true);
+});
 test('interrupted result never presents a winner and home navigation works', async () => {
   await mount(<Results />);
   for (let i = 0; i < 3; i++)
