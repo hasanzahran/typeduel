@@ -1,6 +1,6 @@
 # M0 verification
 
-Date: 2026-10-25 (America/Los_Angeles). Scope: M0 only. Implementation, publication, and portable checks complete; native acceptance remains pending. M1 has not started.
+Date: 2026-10-25 (America/Los_Angeles). Scope: M0 only. Implementation, publication, portable checks, and Android Expo Go preview validation complete; iOS acceptance remains pending. M1 has not started.
 
 ## Executed checks
 
@@ -28,35 +28,91 @@ Date: 2026-10-25 (America/Los_Angeles). Scope: M0 only. Implementation, publicat
 
 Remote verified as `https://github.com/hasanzahran/typeduel.git`. The approved document baseline (`82d3d23`) was pushed to `main`, establishing the PR base without rewriting history. `codex/m0-foundation` adds the implementation (`fcfe1dd`) and verification follow-up.
 
-After browser authorization, both branches were pushed successfully. [Pull request #1](https://github.com/hasanzahran/typeduel/pull/1) is open against `main`. [GitHub Actions run 40255465855](https://github.com/hasanzahran/typeduel/actions/runs/40255465855) completed successfully for `b9ff6ebeae1577bcfecd86e96a308cf0c23cb693`, including every quality and Expo compatibility step. The report update is a subsequent documentation-only commit and triggers another PR check; its status is available on the PR. No force push, rebase, merge, or history replacement was performed.
+After browser authorization, both branches were pushed successfully. [Pull request #1](https://github.com/hasanzahran/typeduel/pull/1) is open against `main`. [GitHub Actions run 40255465855](https://github.com/hasanzahran/typeduel/actions/runs/40255465855) completed successfully for `b9ff6ebeae1577bcfecd86e96a308cf0c23cb693`, including every quality and Expo compatibility step. The subsequent report commit `5b2710d` also passed [run 40255638879](https://github.com/hasanzahran/typeduel/actions/runs/40255638879). Android acceptance fixes and screenshots are a follow-up on the same PR; the current check is linked from the PR. No force push, rebase, merge, or history replacement was performed.
 
-The local full `pnpm check` and `pnpm expo:check` were also rerun successfully during this acceptance follow-up under Node 24.13.0 / pnpm 12.15.0. A formatting failure in the edited verification table was fixed with Prettier before the successful rerun. No application or architecture changes were needed.
+The local full `pnpm check` and `pnpm expo:check` were also rerun successfully during this acceptance follow-up under Node 24.13.0 / pnpm 12.15.0. A formatting failure in the edited verification table was fixed with Prettier before the successful rerun. The later Android run required the UI fixes documented below; no architecture or gameplay rules changed.
 
-## Native checks not available
+## Android installation and native preview
 
-- Acceptance follow-up on 2026-10-25: macOS 15.6.1; approximately 23 GiB free on the data volume. Workspace remains writable. No large dependencies were installed and no system-wide configuration was changed.
-- Xcode is not installed; the active developer directory is Command Line Tools. iOS simulator launch, native iOS compilation, VoiceOver, keyboard/safe-area validation, and native screenshots could not run.
-- Android Studio/SDK/emulator and Java runtime are absent; `adb` is unavailable. Android launch/build, TalkBack, native keyboard/IME behavior, and native screenshots could not run.
-- `xcodebuild -version` reports that full Xcode is required; `xcrun simctl list devices available` cannot find `simctl`; `/usr/libexec/java_home -V` reports no Java runtime. No usable Android SDK, emulator, or bundled JDK was found in the standard installation locations.
-- Expo 58 requires Xcode 26.4 or newer for native compilation ([Expo SDK reference](https://docs.expo.dev/versions/latest/)). Apple's Xcode 26.4.1 requires macOS 26.2 or newer ([Xcode system requirements](https://developer.apple.com/xcode/system-requirements)). This Mac therefore needs a compatible macOS/Xcode installation or another build host for the supported native compilation path. Prebuilt Expo Go on a physical device or a compatible simulator is a separate potential preview path, not a completed check.
-- Large Android SDK, emulator image, and JDK installation requires the user's approval. No approval has been received for those downloads. No native launch or screenshot is claimed while tooling is absent.
-- No physical-device testing, enlarged native font testing, or hardware keyboard testing was possible.
-- Production bundle export is not a native binary build. Browser visual review is supplementary, not native acceptance evidence. No native screenshot files are claimed or fabricated.
+The user approved installing the Android SDK, emulator and JDK. Installed under the user's home directory on macOS 15.6.1 (Apple Silicon), without changing shell profiles, system Java, Xcode selection, or system-wide configuration:
 
-## Remaining limitations
+| Component                    | Installed version / location                                                              |
+| ---------------------------- | ----------------------------------------------------------------------------------------- |
+| Eclipse Temurin JDK          | 17.0.21+9, `~/Library/Java/JavaVirtualMachines/jdk-17.0.21+9/Contents/Home`               |
+| Android command-line tools   | 23.0, with Android CLI 1.1.16717390                                                       |
+| SDK root                     | `~/Library/Android/sdk`                                                                   |
+| Platform tools / build tools | 37.0.1 / 37.0.0                                                                           |
+| SDK platform / system image  | API 37.0 revision 2; Google APIs ARM64 revision 8                                         |
+| Emulator                     | 37.2.12, Apple Hypervisor.Framework acceleration verified                                 |
+| AVD                          | `TypeDuel_M0_API37`, Pixel 6 profile, 2 GiB RAM, 3 GiB data partition, snapshots disabled |
+| Native host app              | Official Expo Go 58.0.5, compatible with SDK 58 / RN 0.88                                 |
+| Shell environment            | `~/Library/Android/typeduel-env.sh` (opt-in via `source`)                                 |
 
-M0 preview actions are intentionally disconnected from gameplay. No auth, sockets, database, word/audio pipeline, cloud resources, or paid services were added. Results are explicit fixtures, never inferred from input. Original planning documents and PNG references are preserved. The dependency tree contains upstream deprecation notices for glob/inflight/whatwg-encoding; direct dependencies passed Expo compatibility checks. The next task is to provision native tooling and complete the checklist below, then review M0 before any M1 work.
+JDK SHA-256 and command-line tools repository checksum were verified before extraction. Downloads came from Adoptium, Google's SDK repository, and Expo's official release. SDK + emulator image occupy about 7.1 GiB; the AVD about 1.5 GiB; the JDK about 310 MiB. Free disk space after installation was about 9.8 GiB. No Android Studio, NDK, paid service, or cloud build was installed or provisioned.
 
-## Native screenshot checklist (pending tooling)
+This is an actual native Android run in Expo Go, not a browser screenshot or a standalone TypeDuel APK build. Tested at 1080×2400 pixels / 420 dpi (about 411×914 dp) and 720×1280 / 320 dpi (360×640 dp), with Gboard English (US), font scale 1.0 and 1.3. Temporary display/font overrides were reset after testing.
 
-- iOS and Android, compact and large phones: Home, Quick Setup, Friend Setup, Gameplay, Results.
-- Classic levels 1–5; Challenge difficulty hidden; fixed General for public play.
-- Gameplay keyboard closed/open, default/enlarged text, predictive bar; input and Submit remain visible. Verify timer readability with available vertical space.
-- Listening, typing, pending, incorrect, exhausted, reconnecting, and audio-error presentation fixtures.
-- Win, loss, draw, interrupted; interrupted never awards a phantom win.
-- Safe areas, scrolling, VoiceOver/TalkBack labels, 44pt/48dp targets, hardware return key, system reduced motion.
+### Results and fixes
 
-Native screenshots cannot be replaced by browser screenshots. A native-tooling failure must remain explicitly recorded rather than passing this checklist.
+| Check                   | Actual result                                                                                                                                                                                                                                                                          |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Launch and theme        | Home opens in Expo Go; approved dark/teal hierarchy and mock-data labels visible                                                                                                                                                                                                       |
+| Navigation              | Home → Quick/Friend Setup → Preview game → Preview results → Back Home exercised; Android Back and scrolling exercised                                                                                                                                                                 |
+| Setup                   | Quick Match fixes General; Friend shows all five categories and Animals selection carries to Gameplay; Classic shows five levels and Expert is selectable; Challenge hides difficulty                                                                                                  |
+| Gameplay metadata       | Challenge example remains Round 2 of 5 / Level 2; timer is explicitly static/mock                                                                                                                                                                                                      |
+| Keyboard and safe areas | Initial Android keyboard obscured the composer. Added Android `KeyboardAvoidingView` height behavior; timer now moves to a compact fixed row above the composer while keyboard is open. Input, Submit and timer remain visible at standard and compact sizes, including 1.3 font scale |
+| Submission              | Enter key and Gboard Send trigger the preview-only notice; Submit works; input never awards points or changes the fixture score                                                                                                                                                        |
+| Presentation states     | Typing, listening, pending, incorrect, exhausted, reconnecting and audio-error states inspected; tapping pending input did not open the keyboard                                                                                                                                       |
+| Results                 | Win, loss, draw and interrupted inspected; interrupted explicitly awards no win and removes Rematch                                                                                                                                                                                    |
+| Local backend           | Home's Check local API reports Local API connected via ADB reverse to port 3000                                                                                                                                                                                                        |
+| Accessibility structure | Native control labels and radio roles inspected. Added explicit Home secondary-action labels to avoid icon glyphs in their accessible names. Primary controls meet the 48 dp target in inspected layouts                                                                               |
+| Runtime diagnostics     | No ReactNativeJS warnings/errors or AndroidRuntime fatal errors in the inspected logcat sample                                                                                                                                                                                         |
+| Portable regression     | Full `pnpm check` and `pnpm expo:check` passed after the UI fixes: 16 tests, all builds/exports, fixture isolation, Expo Doctor 20/20                                                                                                                                                  |
+
+The keyboard-open layout prioritizes the timer and composer. Metadata, score, replay, status and preview controls remain scrollable above them on short screens. This is a responsive correction to the approved keyboard policy, not a gameplay change.
+
+Gboard can still display suggestion/clipboard UI despite the native no-suggestions input flag (observed `inputType=0x280001`) and disabled autocorrect/spellcheck. The app does not claim reliable IME anti-cheat. A transient Gboard “Keyboard font size updated” banner consumed additional height during testing; the final large-text screenshot was captured once that notice was absent. Physical keyboards, alternative IMEs/languages, full TalkBack traversal, larger font scales and real devices remain untested.
+
+### Android screenshots
+
+All PNGs below are unedited emulator captures. The floating gear is Expo Go's developer control, not a TypeDuel feature. Some screens scroll to reveal development-only controls.
+
+| Screen / state    | Evidence                                                                                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Home              | [Home](verification/android/home.png)                                                                                                                         |
+| Quick Setup       | [Classic / General](verification/android/setup-quick.png), [Challenge](verification/android/setup-challenge.png)                                              |
+| Friend Setup      | [Challenge / Animals](verification/android/setup-friend.png)                                                                                                  |
+| Gameplay          | [Keyboard closed](verification/android/gameplay.png), [keyboard open](verification/android/gameplay-keyboard.png)                                             |
+| Compact gameplay  | [360×640, keyboard open](verification/android/gameplay-compact-keyboard.png), [font scale 1.3](verification/android/gameplay-compact-large-text.png)          |
+| Other game states | [Listening](verification/android/gameplay-listening.png), [audio error](verification/android/gameplay-audio-error.png)                                        |
+| Results           | [Win](verification/android/results.png), [compact win](verification/android/results-compact.png), [interrupted](verification/android/results-interrupted.png) |
+
+### Reproduce on this Mac
+
+With the repository's pinned Node 24.13.0 and pnpm 12.15.0 active:
+
+```sh
+source ~/Library/Android/typeduel-env.sh
+emulator -avd TypeDuel_M0_API37 -no-snapshot -no-boot-anim
+# In another terminal, from the repository:
+pnpm dev
+# Once the emulator has booted, in another terminal with the Android environment:
+adb -s emulator-5554 reverse tcp:8081 tcp:8081
+adb -s emulator-5554 reverse tcp:3000 tcp:3000
+adb -s emulator-5554 shell am start -a android.intent.action.VIEW -d exp://127.0.0.1:8081 host.exp.exponent
+```
+
+The `emulator-5554` serial assumes this is the first running emulator; use `adb devices` to confirm. Expo Go is already installed in this AVD. No account or production service is required.
+
+## Remaining acceptance gaps
+
+- Xcode is not installed; the active developer directory is Command Line Tools. `xcodebuild -version` requires full Xcode and `xcrun simctl list devices available` cannot find `simctl`. iOS launch, native compilation, VoiceOver, keyboard/safe-area checks and screenshots could not run.
+- Expo 58 requires Xcode 26.4 or newer for native compilation ([Expo SDK reference](https://docs.expo.dev/versions/latest/)). Apple's Xcode 26.4.1 requires macOS 26.2 or newer ([Xcode system requirements](https://developer.apple.com/xcode/system-requirements)). A compatible macOS/Xcode installation or another build host is needed for that path. A prebuilt Expo Go preview on a physical device or compatible simulator is a separate, untested option. The Android installation approval did not authorize a macOS upgrade.
+- No standalone Android APK or iOS binary was compiled. Production Hermes/web export remains a bundling check, not a native binary build.
+- No physical-device, full VoiceOver/TalkBack, physical hardware-keyboard, alternate IME, or reduced-motion system-toggle testing is claimed. The UI uses no added animation; the native keyboard's theme follows OS/IME preferences.
+- M0 preview actions remain disconnected from gameplay. No auth, sockets, database, word/audio pipeline, cloud resources or paid services were added. Original planning documents and PNG references are preserved. Upstream dependency deprecations remain; direct dependencies passed Expo compatibility checks.
+
+M0 is ready for review of the Android evidence and portable checks, but complete cross-platform acceptance requires the outstanding iOS run. Do not start M1 until M0 is reviewed and approved.
 
 ## Files added by M0
 
@@ -98,6 +154,7 @@ Original source documents, tokens, and four PNG references are in the separate b
 - `apps/server/tsconfig.json`
 - `docs/ARCHITECTURE_DECISIONS.md`
 - `docs/M0_VERIFICATION.md`
+- `docs/verification/android/*.png` (native acceptance captures linked above)
 - `eslint.config.mjs`
 - `package.json`
 - `packages/config/eslint.mjs`

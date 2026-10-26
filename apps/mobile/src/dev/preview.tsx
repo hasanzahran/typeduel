@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Keyboard, Pressable, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -128,6 +128,7 @@ export function Home() {
           <Pressable
             key={label}
             accessibilityRole="button"
+            accessibilityLabel={label}
             onPress={() =>
               setInfo(
                 label === 'How to Play'
@@ -293,6 +294,19 @@ export function Game() {
   const [index, setIndex] = useState(0);
   const [text, setText] = useState('');
   const [notice, setNotice] = useState('');
+  const [keyboardVisible, setKeyboardVisible] = useState(Keyboard.isVisible());
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () =>
+      setKeyboardVisible(true),
+    );
+    const hide = Keyboard.addListener('keyboardDidHide', () =>
+      setKeyboardVisible(false),
+    );
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
   const state = scenarios[index] ?? 'typing';
   const enabled = state === 'typing' || state === 'incorrect';
   const attempts =
@@ -319,12 +333,12 @@ export function Game() {
                 : 'Static timer · no active match';
   return (
     <Screen keyboard>
-      <PreviewLabel />
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ gap: 16, paddingBottom: 16 }}
         keyboardShouldPersistTaps="handled"
       >
+        <PreviewLabel />
         <Metadata />
         <Text style={[styles.caption, { textAlign: 'center' }]}>
           Round 2 of 5 · Level {level}
@@ -334,10 +348,14 @@ export function Game() {
           opponent={sample.score.opponent}
           name={sample.opponent}
         />
-        <Timer
-          seconds={state === 'listening' ? 0 : 8}
-          label={state === 'listening' ? 'Listen carefully' : 'Time remaining'}
-        />
+        {!keyboardVisible && (
+          <Timer
+            seconds={state === 'listening' ? 0 : 8}
+            label={
+              state === 'listening' ? 'Listen carefully' : 'Time remaining'
+            }
+          />
+        )}
         <AudioReplayButton
           remaining={2}
           enabled={enabled}
@@ -363,6 +381,15 @@ export function Game() {
           />
         </View>
       </ScrollView>
+      {keyboardVisible && (
+        <Timer
+          compact
+          seconds={state === 'listening' ? 0 : 8}
+          label={
+            state === 'listening' ? 'Listen carefully' : 'Time remaining · mock'
+          }
+        />
+      )}
       <TypingComposer
         value={text}
         onChange={setText}

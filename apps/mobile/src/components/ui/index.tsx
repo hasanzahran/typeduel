@@ -35,10 +35,10 @@ export function Screen({
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
         style={styles.safe}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         {keyboard ? (
-          <View style={[styles.content, { flex: 1 }]}>{children}</View>
+          <View style={[styles.content, { flex: 1, gap: 12 }]}>{children}</View>
         ) : (
           <ScrollView
             keyboardShouldPersistTaps="handled"
@@ -187,12 +187,26 @@ export function Scoreline({
     </View>
   );
 }
-export function Timer({ seconds, label }: { seconds: number; label: string }) {
+export function Timer({
+  seconds,
+  label,
+  compact = false,
+}: {
+  seconds: number;
+  label: string;
+  compact?: boolean;
+}) {
   const display = `00:${Math.max(0, Math.floor(seconds)).toString().padStart(2, '0')}`;
   return (
-    <View style={styles.center}>
-      <Text style={styles.timer}>{display}</Text>
-      <Text style={styles.muted}>{label}</Text>
+    <View
+      style={
+        compact ? [styles.row, { justifyContent: 'center' }] : styles.center
+      }
+    >
+      <Text style={[styles.timer, compact && { fontSize: 32 }]}>{display}</Text>
+      <Text style={[styles.muted, compact && { flexShrink: 1, fontSize: 14 }]}>
+        {label}
+      </Text>
     </View>
   );
 }
