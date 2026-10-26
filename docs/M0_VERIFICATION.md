@@ -1,13 +1,13 @@
 # M0 verification
 
-Date: 2026-10-25. Scope: M0 only. Implementation and portable checks complete; native acceptance remains pending.
+Date: 2026-10-25 (America/Los_Angeles). Scope: M0 only. Implementation, publication, and portable checks complete; native acceptance remains pending. M1 has not started.
 
 ## Executed checks
 
 | Check                                              | Result                                                                                                                     |
 | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | Write access to requested workspace                | Confirmed with a temporary create/remove probe                                                                             |
-| GitHub repository                                  | `git ls-remote` succeeded with no refs; local repository was also unborn; no existing history overwritten                  |
+| GitHub repository                                  | Verified `hasanzahran/typeduel`; baseline and M0 branches pushed without rewriting existing history                        |
 | Frozen lockfile installation                       | Passed under Node 24.13.0 / pnpm 12.15.0                                                                                   |
 | Formatting, ESLint, import boundaries, token drift | Passed                                                                                                                     |
 | Strict TypeScript                                  | Passed for contracts, server, mobile                                                                                       |
@@ -22,13 +22,15 @@ Date: 2026-10-25. Scope: M0 only. Implementation and portable checks complete; n
 | Live local API                                     | `/health/live` returned 200 with shared health contract                                                                    |
 | Compiled server smoke                              | Started separately, health passed, SIGTERM exited with code 0                                                              |
 | Browser supplemental review                        | All four screens at 390×844; compact 320×568 navigation/Results and 430×932 Setup reviewed; mode/category behavior checked |
-| GitHub-hosted Actions execution                    | Not run: push is blocked on GitHub authentication; workflow is included                                                    |
+| GitHub-hosted Actions execution                    | Passed on Ubuntu for `b9ff6eb`: locked install, full quality checks, production exports, and Expo compatibility            |
 
 ## GitHub publication follow-up
 
-Remote verified as `https://github.com/hasanzahran/typeduel.git`. The remote still advertises no refs. Local `main` contains the approved document baseline (`82d3d23`); `codex/m0-foundation` adds the implementation (`fcfe1dd`). Publishing the existing baseline first will provide the PR base without rewriting history.
+Remote verified as `https://github.com/hasanzahran/typeduel.git`. The approved document baseline (`82d3d23`) was pushed to `main`, establishing the PR base without rewriting history. `codex/m0-foundation` adds the implementation (`fcfe1dd`) and verification follow-up.
 
-The push retry failed because Git could not read a GitHub username. A temporary official GitHub CLI is available for browser-based authorization; authorization is pending. No branch has been pushed, PR created, or hosted CI result verified yet. Successful publication and CI must be recorded here before M0 acceptance can be considered complete.
+After browser authorization, both branches were pushed successfully. [Pull request #1](https://github.com/hasanzahran/typeduel/pull/1) is open against `main`. [GitHub Actions run 40255465855](https://github.com/hasanzahran/typeduel/actions/runs/40255465855) completed successfully for `b9ff6ebeae1577bcfecd86e96a308cf0c23cb693`, including every quality and Expo compatibility step. The report update is a subsequent documentation-only commit and triggers another PR check; its status is available on the PR. No force push, rebase, merge, or history replacement was performed.
+
+The local full `pnpm check` and `pnpm expo:check` were also rerun successfully during this acceptance follow-up under Node 24.13.0 / pnpm 12.15.0. A formatting failure in the edited verification table was fixed with Prettier before the successful rerun. No application or architecture changes were needed.
 
 ## Native checks not available
 
