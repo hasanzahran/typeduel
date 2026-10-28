@@ -10,7 +10,11 @@ Remaining work is isolated on `codex/m0-acceptance-followup`, created from that 
 
 The last pre-merge [CI run for `6793711`](https://github.com/hasanzahran/typeduel/actions/runs/40735302320) is marked **cancelled** overall: locked installation and quality/build checks passed, and its Expo compatibility step failed. This is not green CI. No dependency, lockfile or security-policy changes were made during the post-merge sync; only this report was updated.
 
+Post-merge [draft PR #2](https://github.com/hasanzahran/typeduel/pull/2) is open on `codex/m0-acceptance-followup`. Its [CI run for `f6a1f3b`](https://github.com/hasanzahran/typeduel/actions/runs/40736024863) passed frozen installation and the complete quality/build/export step, then failed Expo compatibility. The scheduled October 29 retry remains active; PR #2 must not be merged automatically. After M0 is ready, prepare a detailed M1 plan from the approved PRD and System Design, covering Socket.IO rooms, matchmaking, server-authoritative scoring, spoken-word audio, timers, three attempts, two extra audio replays, difficulty progression and accessible custom-keyboard evaluation. M1 planning is requested in Plan Mode; implementation requires separate owner approval. No M1 work is included in this follow-up.
+
 ## Physical iPhone confirmation — 2026-10-28
+
+**Owner approval reaffirmed on October 28:** the owner is happy with the mobile visual design and the iPhone testing results they reviewed, and explicitly approves the visual design and confirmed keyboard-open layout. This approval covers the previously reported visibility of the timer, spelling field and Submit button. It does not certify navigation, all-screen safe areas, keyboard Send/Submit interaction, larger accessibility text, VoiceOver or screenshot evidence; those checks remain pending unless individually confirmed. Existing Android evidence and the accepted M0 Gboard prediction limitation are unchanged.
 
 **Evidence source: user report, not an agent-observed device session or screenshots.** The user confirmed that:
 
@@ -23,6 +27,8 @@ These results close the previous unknowns about physical-iPhone launch and the r
 Computer Use inventory showed iPhone Mirroring running on this Mac. Selecting it was blocked by missing macOS Accessibility and Screen Recording permissions, including on retry. No iPhone UI could be inspected or captured remotely. No iOS screenshot files were created, and no browser or Android image is presented as iOS evidence. Manual capture steps are below.
 
 ## Executed checks — refreshed 2026-10-28
+
+**Approval follow-up rerun (October 28, after 21:51 UTC):** frozen-lockfile installation, formatting, lint/boundaries/tokens, strict types, all 17 tests, contracts/server builds, web/iOS/Android production exports and fixture isolation passed again. Expo compatibility still reports the same seven recommended patches; Expo Doctor remains 19/20 with only the SDK-version check failing. No dependencies, lockfile or security settings changed. The required patches have not yet reached their documented October 29 eligibility times.
 
 | Check                                              | Result                                                                                                                     |
 | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
