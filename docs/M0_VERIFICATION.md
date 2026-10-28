@@ -1,6 +1,14 @@
 # M0 verification
 
-Updated: 2026-10-28 (America/Los_Angeles). Scope: M0 only. The owner has now confirmed physical-iPhone launch, approved visual direction and keyboard-open timer/composer visibility in Expo Go. Remaining iOS checks are unverified, and current Expo patch compatibility fails. M1 has not started; PR #1 remains open and unmerged. Android evidence below was captured on 2026-10-25.
+Updated: 2026-10-28 (America/Los_Angeles). Scope: M0 only. The owner has now confirmed physical-iPhone launch, approved visual direction and keyboard-open timer/composer visibility in Expo Go. Remaining iOS checks are unverified, and current Expo patch compatibility fails. M1 has not started. The owner intentionally merged PR #1; the merge is complete, but M0 acceptance remains pending. Android evidence below was captured on 2026-10-25.
+
+## Post-merge acceptance follow-up — 2026-10-28
+
+The owner intentionally merged [PR #1](https://github.com/hasanzahran/typeduel/pull/1) at 17:25:18 UTC. Local `main` was fast-forwarded to `origin/main` at merge commit `9a503d7`. The complete `codex/m0-foundation` history through `6793711` is an ancestor of main, and its file tree matches main exactly. No source-branch commits are missing from main at this audit; all implementation files, approved designs, verification documents and 15 Android screenshots are preserved. No revert, rebase or history rewrite was performed.
+
+Remaining work is isolated on `codex/m0-acceptance-followup`, created from that main commit. A one-time continuation is scheduled for **October 29 at 09:00 America/Los_Angeles**, after the known direct/transitive package eligibility times. It must recheck current recommendations and publication times, preserve `minimumReleaseAge: 1440`, and let pnpm enforce eligibility for the full graph. Eligibility is not assumed in advance. Successful updates require a frozen-lockfile install, full quality/build/export suite, Expo compatibility, Expo Doctor and green GitHub CI on the follow-up PR's exact head. The manual iPhone checklist below remains pending; merging PR #1 did not satisfy those checks.
+
+The last pre-merge [CI run for `6793711`](https://github.com/hasanzahran/typeduel/actions/runs/40735302320) is marked **cancelled** overall: locked installation and quality/build checks passed, and its Expo compatibility step failed. This is not green CI. No dependency, lockfile or security-policy changes were made during the post-merge sync; only this report was updated.
 
 ## Physical iPhone confirmation — 2026-10-28
 
@@ -64,7 +72,7 @@ Current CI follow-up: [run 40731332144](https://github.com/hasanzahran/typeduel/
 
 Remote verified as `https://github.com/hasanzahran/typeduel.git`. The approved document baseline (`82d3d23`) was pushed to `main`, establishing the PR base without rewriting history. `codex/m0-foundation` adds the implementation (`fcfe1dd`) and verification follow-up.
 
-After browser authorization, both branches were pushed successfully. [Pull request #1](https://github.com/hasanzahran/typeduel/pull/1) is open against `main`. [GitHub Actions run 40255465855](https://github.com/hasanzahran/typeduel/actions/runs/40255465855) completed successfully for `b9ff6ebeae1577bcfecd86e96a308cf0c23cb693`, including every quality and Expo compatibility step. The subsequent report commit `5b2710d` also passed [run 40255638879](https://github.com/hasanzahran/typeduel/actions/runs/40255638879). Android acceptance commit `a6c87718e8fab7fe259bdf56d13e8b039ecaa0a9` passed [run 40261309284](https://github.com/hasanzahran/typeduel/actions/runs/40261309284). This result is recorded by a subsequent documentation-only commit; its own current check is linked from the PR. No force push, rebase, merge, or history replacement was performed.
+After browser authorization, both branches were pushed successfully. [Pull request #1](https://github.com/hasanzahran/typeduel/pull/1) was opened against `main` and subsequently merged by the owner on October 28, as recorded above. [GitHub Actions run 40255465855](https://github.com/hasanzahran/typeduel/actions/runs/40255465855) completed successfully for `b9ff6ebeae1577bcfecd86e96a308cf0c23cb693`, including every quality and Expo compatibility step. The subsequent report commit `5b2710d` also passed [run 40255638879](https://github.com/hasanzahran/typeduel/actions/runs/40255638879). Android acceptance commit `a6c87718e8fab7fe259bdf56d13e8b039ecaa0a9` passed [run 40261309284](https://github.com/hasanzahran/typeduel/actions/runs/40261309284). This result is recorded by a subsequent documentation-only commit; its own current check is linked from the PR. No force push, rebase, merge, or history replacement was performed.
 
 The local full `pnpm check` and `pnpm expo:check` were also rerun successfully during this acceptance follow-up under Node 24.13.0 / pnpm 12.15.0. A formatting failure in the edited verification table was fixed with Prettier before the successful rerun. The later Android run required the UI fixes documented below; no architecture or gameplay rules changed.
 
@@ -231,9 +239,9 @@ The proposal should include individually labeled semantic key buttons, Backspace
 - [ ] Native iOS route traversal, all-screen safe areas, Submit/Send, basic VoiceOver and large-text checks confirmed.
 - [ ] iOS screenshot evidence and device/runtime/build details supplied; remote access unavailable, manual steps documented.
 - [x] Gboard predictions remain documented as an **accepted M0 limitation**, with resolution and accessible custom-keyboard evaluation required in M1.
-- [x] PR remains open/unmerged; no custom keyboard, M1 work, large installation, paid build or architecture/design change.
+- [x] Owner-approved PR #1 merge preserved; remaining work isolated on a new M0 branch. No custom keyboard, M1 work, large installation, paid build or architecture/design change.
 
-**Recommendation: hold merge and final M0 sign-off for now.** The owner's successful iPhone run removes the previous environment/launch blocker and confirms the key keyboard-overlap scenario. It does not establish the remaining native checks. Close the small manual iOS checklist and restore current Expo compatibility/green CI before approving and merging PR #1. No new application defect was established by this review; the dependency gate and unverified acceptance evidence are distinct issues. No merge was performed.
+**Recommendation: keep final M0 acceptance pending; the original merge is complete.** The owner's successful iPhone run removes the previous environment/launch blocker and confirms the key keyboard-overlap scenario. It does not establish the remaining native checks. Close the manual iOS checklist and restore current Expo compatibility/green CI through the small follow-up PR before approving M0. Do not start M1. No new application defect was established by this review; the dependency gate and unverified acceptance evidence are distinct issues.
 
 ## Remaining limitations
 
