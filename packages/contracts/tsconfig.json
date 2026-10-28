@@ -1,0 +1,4 @@
+{
+  "extends": "@typeduel/config/tsconfig/node",
+  "include": ["src", "tests"]
+}
