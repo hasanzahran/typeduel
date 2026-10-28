@@ -40,19 +40,23 @@ Computer Use inventory showed iPhone Mirroring running on this Mac. Selecting it
 
 `pnpm check` passed on 2026-10-28 under Node 24.13.0 / pnpm 12.15.0: formatting, lint/import boundaries, token drift, strict types, **17 tests** (5 contracts, 4 server, 8 mobile), contracts/server compilation, iOS/Android Hermes and web exports, and release fixture isolation. `pnpm expo:check` failed at `expo install --check`; running Expo Doctor separately produced **19/20**, with only its SDK dependency-version check failing.
 
-| Package        | Current pin | Currently recommended patch |
-| -------------- | ----------- | --------------------------- |
-| expo           | 58.0.19     | 58.0.21                     |
-| expo-router    | 58.0.26     | 58.0.28                     |
-| expo-linking   | 58.0.14     | 58.0.15                     |
-| expo-constants | 58.0.13     | 58.0.14                     |
-| expo-font      | 58.0.10     | 58.0.11                     |
-| @expo/ui       | 58.0.23     | 58.0.25                     |
-| jest-expo      | 58.0.12     | 58.0.13                     |
+**Registry age audit:** 2026-10-28 16:56:51 UTC (09:56:51 PDT), against the unchanged 1,440-minute policy. None of the seven recommended patches is eligible yet; each was approximately 80–85 minutes old. Publication metadata came directly from the npm registry. No version is marked deprecated in that metadata.
 
-A targeted patch update was attempted, but pnpm rejected the new versions and their dependencies with `ERR_PNPM_NO_MATURE_MATCHING_VERSION`. The repository's `pnpm-workspace.yaml` sets `minimumReleaseAge: 1440` (24 hours); the recommended Expo releases were published on October 28 around 15:33–15:40 UTC. No dependency or lockfile changes were applied. The age policy and validation checks were not disabled or excluded. Retry the exact patch alignment once the required package versions satisfy that policy, then repeat the locked install, full checks, Expo compatibility and affected native smoke tests. This is dependency recommendation drift, not an observed iPhone crash or layout defect.
+| Package                                                     | Current pin | Recommended patch | Published UTC           | Eligible at 24 hours (UTC) |
+| ----------------------------------------------------------- | ----------- | ----------------- | ----------------------- | -------------------------- |
+| [expo](https://registry.npmjs.org/expo)                     | 58.0.19     | 58.0.21           | 2026-10-28 15:36:05.811 | 2026-10-29 15:36:05.811    |
+| [expo-router](https://registry.npmjs.org/expo-router)       | 58.0.26     | 58.0.28           | 2026-10-28 15:36:42.455 | 2026-10-29 15:36:42.455    |
+| [expo-linking](https://registry.npmjs.org/expo-linking)     | 58.0.14     | 58.0.15           | 2026-10-28 15:34:41.340 | 2026-10-29 15:34:41.34     |
+| [expo-constants](https://registry.npmjs.org/expo-constants) | 58.0.13     | 58.0.14           | 2026-10-28 15:35:30.588 | 2026-10-29 15:35:30.588    |
+| [expo-font](https://registry.npmjs.org/expo-font)           | 58.0.10     | 58.0.11           | 2026-10-28 15:33:20.136 | 2026-10-29 15:33:20.136    |
+| [@expo/ui](https://registry.npmjs.org/%40expo%2Fui)         | 58.0.23     | 58.0.25           | 2026-10-28 15:33:03.917 | 2026-10-29 15:33:03.917    |
+| [jest-expo](https://registry.npmjs.org/jest-expo)           | 58.0.12     | 58.0.13           | 2026-10-28 15:31:28.680 | 2026-10-29 15:31:28.68     |
 
-Current CI follow-up: [run 40271386739, attempt 2](https://github.com/hasanzahran/typeduel/actions/runs/40271386739/attempts/2) on October 28 **failed** at Expo dependency compatibility for `0bf9539edaf75b356153a941f4d662504e7541a4`. Locked installation and all formatting/lint/types/tests/build/fixture checks passed; the failing step reported the same seven patch mismatches as local validation. Expo Doctor did not execute in CI because the preceding install check failed; its 19/20 result above is the separate local run. This report is a subsequent documentation-only change; the latest head's checks are linked from [PR #1](https://github.com/hasanzahran/typeduel/pull/1). Older green runs below are historical evidence, not current acceptance.
+**Earliest eligibility for all seven direct packages:** October 29, 2026, 15:36:43 UTC / **08:36:43 PDT**. This is not a guarantee that the entire dependency graph can install then: previously rejected transitive packages included `@expo/cli@58.1.17`, published October 28 at 15:39:30.715 UTC. Recheck the current recommendations and let the existing pnpm resolver enforce the age rule for every package on the retry. No age exclusion, clock override, offline compatibility bypass, SDK major change or manifest/lockfile update was made in this follow-up.
+
+The preceding acceptance follow-up attempted a targeted patch update, but pnpm rejected the new versions and their dependencies with `ERR_PNPM_NO_MATURE_MATCHING_VERSION`. The repository's `pnpm-workspace.yaml` sets `minimumReleaseAge: 1440` (24 hours); the recommended Expo packages and dependencies were published on October 28 around 15:31–15:40 UTC. No dependency or lockfile changes were applied. The age policy and validation checks were not disabled or excluded. This follow-up rechecked the registry ages and did not repeat an ineligible update. The existing frozen-lockfile installation and full quality suite were rerun successfully without changing dependencies. Once the versions satisfy the policy, apply the eligible compatible patches, update the lockfile, and repeat frozen installation, all checks and affected native smoke tests. This is dependency recommendation drift, not an observed iPhone crash or layout defect.
+
+Current CI follow-up: [run 40728341390](https://github.com/hasanzahran/typeduel/actions/runs/40728341390) on October 28 **failed** at Expo dependency compatibility for `f4fe5fa546a015f9b0170059d7f5a8873f794ecf`. Locked installation and all formatting/lint/types/tests/build/fixture checks passed; the failing step reported the same seven patch mismatches as local validation. Expo Doctor did not execute in CI because the preceding install check failed; its 19/20 result above is the separate local run. This report is a subsequent documentation-only change; the latest head's checks are linked from [PR #1](https://github.com/hasanzahran/typeduel/pull/1). Older green runs below are historical evidence, not current acceptance.
 
 ## GitHub publication follow-up (historical)
 
@@ -197,15 +201,16 @@ Calculated full-opacity token contrast ratios: primary text/background **17.89:1
 
 ### Remaining manual iPhone checks and screenshot procedure
 
-1. Record iPhone model, iOS and Expo Go versions, keyboard/language, text-size setting and the tested branch/commit. Open the current M0 development preview through Metro; keep mock-data labels visible.
-2. Navigate Home → Quick Match → Setup → Preview game → Preview results → Back Home. Repeat from Play with Friend; exercise Setup Back. Confirm Quick Match fixes General, Friend permits categories, Classic exposes difficulty and Challenge hides it. Scroll to all bottom controls and note any stuck navigation.
-3. Inspect each screen at the status/notch area and bottom home indicator, including keyboard closed/open. Confirm no text/buttons are clipped, covered or unreachable. Reopen/dismiss the keyboard several times; type arbitrary text and exercise Submit and native Send. Both should show only the mock submission notice and never change the fixture score. Inspect listening/pending input lock and interrupted Results.
-4. Enable a larger iOS text size, repeat all four screens and keyboard-open Gameplay, and restore the original setting afterward. If the phone is not compact, mark the compact-iPhone case untested rather than extrapolating from Android. Confirm readable labels, reachable timer/composer and scrolling.
-5. Perform a basic VoiceOver traversal: all primary actions, Back and spelling field must be labeled; mode/category choices must announce selection; disabled controls must be understandable; focus must reach controls in a usable order after navigation. Check outcome/status reading without duplicate icon names. Record any failures. A full assistive-technology audit is not claimed by this smoke test.
-6. Capture unedited native screenshots using the iPhone screenshot controls (Side + Volume Up on Face ID models; Home + Side/Top on Home-button models). Minimum set: `home.png`, `setup.png`, `gameplay.png` with keyboard closed, `gameplay-keyboard.png`, and `results.png`; add `gameplay-large-text.png` and error/interrupted states where tested. Compare hierarchy, teal actions, typography, spacing and mock labels against `docs/design/mockups/`. Note intentional fixture/scrolling differences.
-7. Transfer the captures to the Mac (for example, AirDrop) or attach them to this task. The planned repository destination is `docs/verification/ios/`—no files exist there yet. Keep device/version/build notes with the results. Screenshots establish visual evidence; navigation, Send and VoiceOver still need written outcomes. Exclude personal notifications from captures without altering the app evidence.
+Record the iPhone model, iOS/Expo Go versions, keyboard/language, text-size setting and tested Git commit. Your existing launch, design and keyboard-visibility confirmations remain accepted. The following items are **unverified** until you report actual results:
 
-These are **pending manual steps**, not executed tests. The user's confirmed visibility result is already accepted and need not be relabeled as untested.
+- [ ] **Navigation:** Home → Quick Match → Setup → Preview game → Preview results → Back Home; repeat through Play with Friend and test Setup Back. Check Classic/Challenge and category selection, and scroll to bottom controls.
+- [ ] **Safe areas:** on all four screens, check the notch/status bar and home indicator; no clipped text, covered buttons or unreachable content, with the keyboard open and closed.
+- [ ] **Submit/Send:** type arbitrary text and try both Submit and the keyboard's Send key. Each must show the mock-only submission notice without changing scores. Repeat after closing/reopening the keyboard; check listening/pending input lock.
+- [ ] **Larger text:** increase iOS accessibility text size, revisit all four screens and keyboard-open Gameplay, and check readable labels/scrolling and visible timer/input/Submit. Restore the original setting; mark compact-iPhone coverage untested if no compact device is available.
+- [ ] **VoiceOver:** traverse the primary controls and Back; verify labels, selected/disabled states, logical reachable focus, spelling-field editing and readable status/results. Record failures; this is a basic smoke test, not a full accessibility audit.
+- [ ] **Screenshots:** capture Home, Setup, Gameplay with keyboard closed, Gameplay with keyboard open, and Results. Add a larger-text Gameplay capture if tested. Compare with `docs/design/mockups/`; keep mock labels visible and avoid personal notifications.
+
+Use the iPhone's screenshot buttons (Side + Volume Up on Face ID models; Home + Side/Top on Home-button models). Attach unedited captures to this task or transfer them to the Mac. Planned filenames under `docs/verification/ios/` are `home.png`, `setup.png`, `gameplay.png`, `gameplay-keyboard.png`, `results.png`, and optionally `gameplay-large-text.png`; none has been supplied yet. Include pass/fail notes for interactions and VoiceOver, since screenshots alone do not verify them.
 
 ### M1 evaluation requirement: accessible controlled keyboard
 
