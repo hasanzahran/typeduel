@@ -1,8 +1,20 @@
 # M0 verification
 
-Date: 2026-10-25 (America/Los_Angeles). Scope: M0 only. Implementation, publication, portable checks, and Android Expo Go preview validation complete; iOS acceptance remains pending. M1 has not started.
+Updated: 2026-10-28 (America/Los_Angeles). Scope: M0 only. The owner has now confirmed physical-iPhone launch, approved visual direction and keyboard-open timer/composer visibility in Expo Go. Remaining iOS checks are unverified, and current Expo patch compatibility fails. M1 has not started; PR #1 remains open and unmerged. Android evidence below was captured on 2026-10-25.
 
-## Executed checks
+## Physical iPhone confirmation — 2026-10-28
+
+**Evidence source: user report, not an agent-observed device session or screenshots.** The user confirmed that:
+
+- TypeDuel opens successfully on a physical iPhone using Expo Go.
+- The visual design matches the approved direction.
+- The timer, spelling input and Submit button remain visible with the iOS keyboard open.
+
+These results close the previous unknowns about physical-iPhone launch and the reported keyboard-overlap scenario. They do not establish navigation coverage, every screen's layout, VoiceOver behavior or compact/large-text support. iPhone model, iOS version, Expo Go version, keyboard/language, text-size setting and exact tested Git commit were not supplied; they were requested and remain unknown. Do not infer the installed Expo Go version from the earlier App Store research.
+
+Computer Use inventory showed iPhone Mirroring running on this Mac. Selecting it was blocked by missing macOS Accessibility and Screen Recording permissions, including on retry. No iPhone UI could be inspected or captured remotely. No iOS screenshot files were created, and no browser or Android image is presented as iOS evidence. Manual capture steps are below.
+
+## Executed checks — refreshed 2026-10-28
 
 | Check                                              | Result                                                                                                                     |
 | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
@@ -16,15 +28,33 @@ Date: 2026-10-25 (America/Los_Angeles). Scope: M0 only. Implementation, publicat
 | Jest mobile UI/API configuration                   | 8 tests passed; process exits normally                                                                                     |
 | Production builds                                  | Contracts + server compiled; iOS/Android Hermes and web bundles exported                                                   |
 | Release fixture scan                               | Passed; fixture sentinel/banner absent from production bundles                                                             |
-| Expo dependency compatibility                      | Passed                                                                                                                     |
-| Expo Doctor                                        | 20/20 checks passed                                                                                                        |
+| Expo dependency compatibility                      | Failed on 2026-10-28: seven recommended SDK 58 patch updates                                                               |
+| Expo Doctor                                        | 19/20 on 2026-10-28; SDK package-version check failed                                                                      |
 | Documented `pnpm dev`                              | Starts contracts watcher, Fastify, Metro                                                                                   |
 | Live local API                                     | `/health/live` returned 200 with shared health contract                                                                    |
 | Compiled server smoke                              | Started separately, health passed, SIGTERM exited with code 0                                                              |
 | Browser supplemental review                        | All four screens at 390×844; compact 320×568 navigation/Results and 430×932 Setup reviewed; mode/category behavior checked |
-| GitHub-hosted Actions execution                    | Passed on Ubuntu for Android acceptance commit `a6c8771`: locked install, quality checks, exports and Expo compatibility   |
+| GitHub-hosted Actions execution                    | Failed on 2026-10-28 at Expo compatibility; locked install and all quality/build checks passed. See CI follow-up below     |
 
-## GitHub publication follow-up
+### Current dependency compatibility blocker
+
+`pnpm check` passed on 2026-10-28 under Node 24.13.0 / pnpm 12.15.0: formatting, lint/import boundaries, token drift, strict types, **17 tests** (5 contracts, 4 server, 8 mobile), contracts/server compilation, iOS/Android Hermes and web exports, and release fixture isolation. `pnpm expo:check` failed at `expo install --check`; running Expo Doctor separately produced **19/20**, with only its SDK dependency-version check failing.
+
+| Package        | Current pin | Currently recommended patch |
+| -------------- | ----------- | --------------------------- |
+| expo           | 58.0.19     | 58.0.21                     |
+| expo-router    | 58.0.26     | 58.0.28                     |
+| expo-linking   | 58.0.14     | 58.0.15                     |
+| expo-constants | 58.0.13     | 58.0.14                     |
+| expo-font      | 58.0.10     | 58.0.11                     |
+| @expo/ui       | 58.0.23     | 58.0.25                     |
+| jest-expo      | 58.0.12     | 58.0.13                     |
+
+A targeted patch update was attempted, but pnpm rejected the new versions and their dependencies with `ERR_PNPM_NO_MATURE_MATCHING_VERSION`. The repository's `pnpm-workspace.yaml` sets `minimumReleaseAge: 1440` (24 hours); the recommended Expo releases were published on October 28 around 15:33–15:40 UTC. No dependency or lockfile changes were applied. The age policy and validation checks were not disabled or excluded. Retry the exact patch alignment once the required package versions satisfy that policy, then repeat the locked install, full checks, Expo compatibility and affected native smoke tests. This is dependency recommendation drift, not an observed iPhone crash or layout defect.
+
+Current CI follow-up: [run 40271386739, attempt 2](https://github.com/hasanzahran/typeduel/actions/runs/40271386739/attempts/2) on October 28 **failed** at Expo dependency compatibility for `0bf9539edaf75b356153a941f4d662504e7541a4`. Locked installation and all formatting/lint/types/tests/build/fixture checks passed; the failing step reported the same seven patch mismatches as local validation. Expo Doctor did not execute in CI because the preceding install check failed; its 19/20 result above is the separate local run. This report is a subsequent documentation-only change; the latest head's checks are linked from [PR #1](https://github.com/hasanzahran/typeduel/pull/1). Older green runs below are historical evidence, not current acceptance.
+
+## GitHub publication follow-up (historical)
 
 Remote verified as `https://github.com/hasanzahran/typeduel.git`. The approved document baseline (`82d3d23`) was pushed to `main`, establishing the PR base without rewriting history. `codex/m0-foundation` adds the implementation (`fcfe1dd`) and verification follow-up.
 
@@ -122,9 +152,9 @@ Retested on the existing API 37 emulator with Gboard `17.2.2.895242737-preload-a
 - Gboard still exposes microphone/clipboard tools. `contextMenuHidden` cannot remove an IME's own clipboard, dictation, text replacement or external assistance. Autofill suppression is configured and covered by the component test; a populated password manager/autofill service was not tested.
 - iOS keyboard behavior, other Android IMEs, physical hardware keyboards and full screen-reader typing remain untested. Do not claim assistance-free competitive input.
 
-### iOS availability and prerequisites
+### iOS environment investigation (2026-10-25) and current access
 
-No iPhone was detected in the USB inventory. Physical iPhone availability over Wi-Fi was requested from the user and is not yet confirmed. `xcode-select -p` points to `/Library/Developer/CommandLineTools`; `xcodebuild -version` requires full Xcode, and `xcrun simctl` / `xcrun devicectl` are unavailable. Consequently, no iOS screenshots or native iOS pass results can be supplied.
+The earlier USB/tooling investigation found Command Line Tools without full Xcode, `simctl` or `devicectl`. That did not prevent the owner's now-confirmed physical-iPhone Expo Go run. Remaining remote capture is blocked by Computer Use permissions; installing Xcode is not required to finish the manual acceptance checklist. The following availability/cost research is retained with its original date, not rechecked on October 28.
 
 **Verified availability, 2026-10-25:** the US [App Store listing](https://apps.apple.com/us/app/expo-go/id982107779) offers Expo Go **58.0.5**, released October 22, with release notes explicitly adding SDK 58 support; it is free and requires iOS **16.4+**. Apple's [lookup metadata](https://itunes.apple.com/lookup?id=982107779&country=us) independently returned the same version, date, OS minimum and SDK support. The listing's generic description still mentions an older React Native version; the version-specific notes and metadata were used for compatibility. [Expo's download page](https://expo.dev/go) also lists SDK 58 as latest. Availability is verified for the US storefront, not every region or a particular phone's installed version.
 
@@ -132,7 +162,7 @@ No iPhone was detected in the USB inventory. Physical iPhone availability over W
 
 | Option                                          | Requirements and costs                                                                                                                                                         | Suitability for M0                                                                                                                                                                          |
 | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Physical iPhone + App Store Expo Go 58.0.5      | iOS 16.4+, Apple Account for App Store download, free Expo Go, same LAN and Metro; no paid developer enrollment or local native tools                                          | Preferred. SDK 58 availability confirmed; actual device run pending                                                                                                                         |
+| Physical iPhone + App Store Expo Go 58.0.5      | iOS 16.4+, Apple Account for App Store download, free Expo Go, same LAN and Metro; no paid developer enrollment or local native tools                                          | Preferred; physical-iPhone launch now owner-confirmed. Exact installed version remains unreported                                                                                           |
 | Expo Go beta via TestFlight                     | Expo-provided invitation and compatible beta, free TestFlight app; availability/slots must be checked if needed                                                                | Not required: compatible stable App Store Expo Go is available. No beta invitation was needed or verified                                                                                   |
 | TypeDuel iOS development build, built locally   | Compatible Mac/Xcode and native build tools, signing and Developer Mode on iPhone; free Apple Account can use Personal Team with 7-day provisioning; Expo account not required | More disruptive here: SDK 58 source builds require a newer Xcode/macOS toolchain; project native-build configuration would need review                                                      |
 | TypeDuel development build via EAS              | Expo account/project and EAS configuration; physical-device ad hoc signing needs paid Apple Developer membership and device registration, plus Developer Mode                  | Avoids local Xcode but adds account/signing/configuration work. Free EAS quota may cover a build; no build or account setup initiated                                                       |
@@ -143,16 +173,39 @@ No iPhone was detected in the USB inventory. Physical iPhone availability over W
 
 For Simulator preview, full Xcode, an installed iOS Simulator runtime and a compatible prebuilt Expo Go simulator app are needed. [Apple lists Xcode 26.3 as compatible with macOS 15.6](https://developer.apple.com/xcode/system-requirements), so this is a possible preview path on the current macOS 15.6.1, subject to verifying the prebuilt app/runtime combination. It has not been installed or proven. Building SDK 58 from source instead requires [Xcode 26.4+](https://docs.expo.dev/versions/latest/); Xcode 26.4.1 requires macOS 26.2+. Only about 9.9 GiB is free on the internal volume. Do not start a large Xcode/runtime installation or macOS upgrade without approval and a storage plan.
 
-| iOS acceptance item                                                     | Result                                                                                                       |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Home, Setup, Gameplay, Results vs approved PNGs                         | Blocked: no available iOS runtime/device; no screenshots                                                     |
-| Navigation and safe areas, including notch/home indicator               | Not run                                                                                                      |
-| Keyboard closed/open, timer/composer visibility, compact and large text | Not run; Android success does not prove iOS success                                                          |
-| Autocorrect, prediction, spellcheck, autofill, Send and paste behavior  | Not run; only source configuration and portable tests checked                                                |
-| VoiceOver labels/focus, Dynamic Type, minimum 44 pt targets             | Not run on iOS                                                                                               |
-| Regression from Android keyboard fix                                    | Unverified natively; iOS still uses KAV `padding`, but shared timer/composer changes need actual iOS testing |
+### Current iOS acceptance matrix
 
-On the available iPhone, test each route and return navigation; capture all four screens plus keyboard-open Gameplay at normal and large text; inspect safe areas, scrolling, mock labels, approved charcoal/teal hierarchy and touch targets. With prediction/autocorrect enabled in OS settings, type intentional misspellings and test suggestions, Send, selection/paste and any autofill UI. Traverse controls using VoiceOver, checking labels, selected/disabled states and focus order. Record device/iOS/Expo Go/keyboard versions and compare screenshots with `docs/design/mockups/`. This is a pending checklist, not executed evidence.
+| Item                                                        | Evidence and result                                                                                                                       |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Physical-iPhone launch in Expo Go                           | **Confirmed by user**, 2026-10-28                                                                                                         |
+| Overall approved dark/teal visual direction                 | **Confirmed by user**; individual screen captures/comparison not supplied                                                                 |
+| Timer, input and Submit visible with keyboard open          | **Confirmed by user** on their tested configuration                                                                                       |
+| Android keyboard-fix regression on iOS                      | Reported overlap scenario passes on that iPhone; animation, repeated open/close, compact/large text and other keyboards remain unverified |
+| Home → Quick/Friend Setup → Gameplay → Results → Home; Back | Source and automated route tests reviewed; **native iOS traversal unverified**                                                            |
+| All four screen layouts and scrolling                       | Shared responsive components reviewed; no per-screen iOS capture, short-screen or large-text confirmation                                 |
+| Safe areas at notch/status bar and home indicator           | SafeAreaProvider/SafeAreaView present in source; **native edge clearance across all routes unverified**                                   |
+| Submit tap and iOS Send; pending/listening input lock       | Portable tests pass; user confirmed visibility only, so **native behavior unverified**                                                    |
+| VoiceOver labels, selected/disabled states and focus order  | Source labels/roles/states reviewed; **native VoiceOver smoke unverified**                                                                |
+| Text scaling, target sizes and visual readability           | Scaling is not disabled; source controls use minimum heights 48–56, Back 48×48; **native scaled layout and hit areas unverified**         |
+| Keyboard assistance                                         | Disabling configuration retained; iOS behavior not reported. Gboard issue is accepted for M0 and assigned to M1                           |
+| iOS screenshots                                             | **Not captured**: remote permission barrier; manual procedure below                                                                       |
+| Device / runtime / keyboard / build provenance              | Requested; not yet supplied                                                                                                               |
+
+Source review found the shared safe-area wrapper and iOS `KeyboardAvoidingView` padding branch intact. Home, Setup and Results scroll; Gameplay scrolls metadata above the pinned timer/composer when the keyboard is open. Setup chips wrap, primary actions expose button labels/disabled states, mode/category choices expose radio states, and decorative icons are excluded from accessibility. Stack animation is disabled. These are implementation observations, not native accessibility or layout passes. VoiceOver announcement of changing status/results must be tested; portable property tests do not establish announcement or focus behavior.
+
+Calculated full-opacity token contrast ratios: primary text/background **17.89:1**, primary text/surface **15.24:1**, secondary text/background **11.03:1**, secondary text/surface **9.39:1**, and accent text/accent **7.77:1**. This source-level calculation does not cover every rendered state, keyboard, disabled opacity or display accessibility setting.
+
+### Remaining manual iPhone checks and screenshot procedure
+
+1. Record iPhone model, iOS and Expo Go versions, keyboard/language, text-size setting and the tested branch/commit. Open the current M0 development preview through Metro; keep mock-data labels visible.
+2. Navigate Home → Quick Match → Setup → Preview game → Preview results → Back Home. Repeat from Play with Friend; exercise Setup Back. Confirm Quick Match fixes General, Friend permits categories, Classic exposes difficulty and Challenge hides it. Scroll to all bottom controls and note any stuck navigation.
+3. Inspect each screen at the status/notch area and bottom home indicator, including keyboard closed/open. Confirm no text/buttons are clipped, covered or unreachable. Reopen/dismiss the keyboard several times; type arbitrary text and exercise Submit and native Send. Both should show only the mock submission notice and never change the fixture score. Inspect listening/pending input lock and interrupted Results.
+4. Enable a larger iOS text size, repeat all four screens and keyboard-open Gameplay, and restore the original setting afterward. If the phone is not compact, mark the compact-iPhone case untested rather than extrapolating from Android. Confirm readable labels, reachable timer/composer and scrolling.
+5. Perform a basic VoiceOver traversal: all primary actions, Back and spelling field must be labeled; mode/category choices must announce selection; disabled controls must be understandable; focus must reach controls in a usable order after navigation. Check outcome/status reading without duplicate icon names. Record any failures. A full assistive-technology audit is not claimed by this smoke test.
+6. Capture unedited native screenshots using the iPhone screenshot controls (Side + Volume Up on Face ID models; Home + Side/Top on Home-button models). Minimum set: `home.png`, `setup.png`, `gameplay.png` with keyboard closed, `gameplay-keyboard.png`, and `results.png`; add `gameplay-large-text.png` and error/interrupted states where tested. Compare hierarchy, teal actions, typography, spacing and mock labels against `docs/design/mockups/`. Note intentional fixture/scrolling differences.
+7. Transfer the captures to the Mac (for example, AirDrop) or attach them to this task. The planned repository destination is `docs/verification/ios/`—no files exist there yet. Keep device/version/build notes with the results. Screenshots establish visual evidence; navigation, Send and VoiceOver still need written outcomes. Exclude personal notifications from captures without altering the app evidence.
+
+These are **pending manual steps**, not executed tests. The user's confirmed visibility result is already accepted and need not be relabeled as untested.
 
 ### M1 evaluation requirement: accessible controlled keyboard
 
@@ -160,26 +213,27 @@ The owner has assigned complete resolution of keyboard assistance to **M1 gamepl
 
 The proposal should include individually labeled semantic key buttons, Backspace and Submit, a readable answer buffer, stable focus order, VoiceOver/TalkBack and switch-control support, high contrast, scalable labels and layouts, and minimum 44 pt iOS / 48 dp Android touch targets. A full QWERTY row cannot fit 48 dp keys on a compact 360 dp display, so review a compact alternative (for example paged/fewer-column layouts) with accessibility users before choosing a design. Do not shrink targets or disable assistive technology to fit. Define supported languages/diacritics and hardware-keyboard handling explicitly; hiding the soft keyboard alone leaves native text injection paths open. Review fairness and accessible input accommodations together. Test compact screens, large text, screen readers and real devices before adopting it. Even a controlled keyboard cannot prevent another device or other external help.
 
-### Final acceptance decision
+### Final acceptance checklist and recommendation — 2026-10-28
 
-The owner-approved acceptance-plan follow-up changes documentation only: Gboard resolution moves to M1; iOS native validation remains the M0 gate. Formatting and diff checks were rerun for the documentation changes. Existing automated/native results below retain their original provenance; no new iOS run or screenshots are claimed.
+- [x] M0 foundation, approved architecture/tokens, four labeled mock screens and local health API implemented; no M1 functionality.
+- [x] Android four-screen/navigation and keyboard evidence retained from October 25.
+- [x] Physical-iPhone Expo Go launch, visual direction and keyboard-open timer/input/Submit visibility confirmed by the owner.
+- [x] October 28 formatting, lint, strict types, 17 tests, server/contracts builds, all production exports and fixture isolation pass.
+- [ ] Current Expo compatibility / all 20 Doctor checks: fails on seven newly recommended patches; upgrade blocked by the existing 24-hour release-age policy.
+- [ ] Current GitHub CI green: October 28 rerun failed at Expo compatibility; the quality/build step passed. See the linked run above.
+- [ ] Native iOS route traversal, all-screen safe areas, Submit/Send, basic VoiceOver and large-text checks confirmed.
+- [ ] iOS screenshot evidence and device/runtime/build details supplied; remote access unavailable, manual steps documented.
+- [x] Gboard predictions remain documented as an **accepted M0 limitation**, with resolution and accessible custom-keyboard evaluation required in M1.
+- [x] PR remains open/unmerged; no custom keyboard, M1 work, large installation, paid build or architecture/design change.
 
-`pnpm check` passed after the input changes: formatting, ESLint, import boundaries, token drift, strict types, **17 tests** (contracts 5, server 4, mobile 8), contracts/server builds, all three production exports and fixture exclusion. `pnpm expo:check` passed dependency compatibility and Expo Doctor **20/20**. No standalone native binary was built. GitHub Actions [run 40264544293](https://github.com/hasanzahran/typeduel/actions/runs/40264544293) passed every quality and compatibility step for code/evidence commit `9c329561a24306f324dbac6e19999273f9ca0cfc`. This report is published in a subsequent documentation-only commit; its current checks are available on [PR #1](https://github.com/hasanzahran/typeduel/pull/1), which remains open and unmerged. History was preserved.
+**Recommendation: hold merge and final M0 sign-off for now.** The owner's successful iPhone run removes the previous environment/launch blocker and confirms the key keyboard-overlap scenario. It does not establish the remaining native checks. Close the small manual iOS checklist and restore current Expo compatibility/green CI before approving and merging PR #1. No new application defect was established by this review; the dependency gate and unverified acceptance evidence are distinct issues. No merge was performed.
 
-- **Pass:** M0 foundation, portable checks, Android four-screen preview/navigation, and recorded Android keyboard/safe-area evidence.
-- **Block complete cross-platform M0 acceptance:** native iOS validation, design comparison, accessibility smoke and screenshots are missing.
-- **Accepted M0 limitation; M1 gameplay requirement:** Gboard predictions persist. The owner explicitly deferred complete resolution to M1, so this is not an M0 UI-foundation blocker. Retain the evidence and supported disabling flags; do not claim assistance-free input. M1 includes input-policy review, accessible custom-keyboard evaluation and fairness verification.
-- **Not done / not authorized:** merge, M1 implementation, custom keyboard, new large system installations or paid builds.
+## Remaining limitations
 
-## Remaining acceptance gaps
-
-- Xcode is not installed; the active developer directory is Command Line Tools. `xcodebuild -version` requires full Xcode and `xcrun simctl list devices available` cannot find `simctl`. iOS launch, native compilation, VoiceOver, keyboard/safe-area checks and screenshots could not run.
-- Expo 58 requires Xcode 26.4 or newer for native compilation ([Expo SDK reference](https://docs.expo.dev/versions/latest/)). Apple's Xcode 26.4.1 requires macOS 26.2 or newer ([Xcode system requirements](https://developer.apple.com/xcode/system-requirements)). A compatible macOS/Xcode installation or another build host is needed for that path. A prebuilt Expo Go preview on a physical device or compatible simulator is a separate, untested option. The Android installation approval did not authorize a macOS upgrade.
-- No standalone Android APK or iOS binary was compiled. Production Hermes/web export remains a bundling check, not a native binary build.
-- No physical-device, full VoiceOver/TalkBack, physical hardware-keyboard, alternate IME, or reduced-motion system-toggle testing is claimed. The UI uses no added animation; the native keyboard's theme follows OS/IME preferences.
-- M0 preview actions remain disconnected from gameplay. No auth, sockets, database, word/audio pipeline, cloud resources or paid services were added. Original planning documents and PNG references are preserved. Upstream dependency deprecations remain; direct dependencies passed Expo compatibility checks.
-
-M0 is ready for review of the Android evidence and portable checks, but complete cross-platform acceptance requires the outstanding iOS run. Do not start M1 until M0 is reviewed and approved.
+- Native compilation of standalone Android/iOS binaries was not performed. Hermes/web exports validate bundling, not native binary builds. A standalone binary is not needed to finish this M0 Expo Go checklist.
+- Physical-iPhone evidence is limited to the three owner confirmations above. Full VoiceOver/TalkBack, hardware-keyboard, alternate IME and reduced-motion system-toggle testing remain unverified. Basic iOS accessibility/large-text smoke is still part of M0 acceptance; exhaustive device/input coverage remains later work.
+- Xcode installation or macOS changes are unnecessary for the chosen physical Expo Go route and were not initiated. Remote capture failed on Computer Use permissions, not on Expo Go availability.
+- M0 preview actions remain disconnected from gameplay. No auth, sockets, database, word/audio pipeline, cloud resources or paid services were added. Approved architecture, design and PNG references are unchanged. The dependency policy and pinned packages are unchanged after the blocked patch attempt.
 
 ## Files added by M0
 
