@@ -1,6 +1,6 @@
 # M0 verification
 
-Updated: 2026-10-29 (America/Los_Angeles). Scope: M0 only. The owner has now confirmed physical-iPhone launch, approved visual direction and keyboard-open timer/composer visibility in Expo Go. Remaining iOS checks are unverified. The eligible SDK 58 patch updates now pass Expo compatibility and all 20 Doctor checks; the updated PR head still requires CI confirmation. M1 has not started. The owner intentionally merged PR #1; the merge is complete, but M0 acceptance remains pending. Android evidence below was captured on 2026-10-25.
+Updated: 2026-10-29 (America/Los_Angeles). Scope: M0 only. The owner has now confirmed physical-iPhone launch, approved visual direction and keyboard-open timer/composer visibility in Expo Go. Remaining iOS checks are unverified. The eligible SDK 58 patch updates now pass Expo compatibility and all 20 Doctor checks; GitHub CI passed for dependency commit `a3f554c` (linked below). M1 has not started. The owner intentionally merged PR #1; the merge is complete, but M0 acceptance remains pending. Android evidence below was captured on 2026-10-25.
 
 ## Eligible SDK 58 compatibility update — 2026-10-29
 
@@ -20,7 +20,7 @@ The scheduled retry ran after 09:00 PDT. Expo recommended the previous seven pat
 
 `pnpm --filter @typeduel/mobile update` applied these exact versions under the unchanged `minimumReleaseAge: 1440` policy. Resolution succeeded without exclusions, clock changes, forced installs or compatibility-check suppression. A separate registry audit of **all 53 newly introduced package versions** in the lockfile found none younger than 24 hours. The newest was `@expo/cli@58.1.17`, published **2026-10-28T15:39:30.715Z** (over 1,463 minutes old at the audit); `expo-file-system@58.0.13` was published at **15:39:27.892Z**. Publication metadata came from each package's `https://registry.npmjs.org/<package>` time map. Existing supply-chain and build-script policies are unchanged. pnpm reported four deprecated transitives (`glob@10.5.0`, `glob@7.2.3`, `inflight@1.0.6`, `whatwg-encoding@3.1.1`); these are upstream warnings, not failures of the compatibility or release-age checks.
 
-**Local results on the updated graph:** frozen-lockfile installation passed; formatting, lint/import boundaries/token drift, strict types, all **17 tests** (5 contracts, 4 server, 8 mobile), contracts/server builds, web/iOS/Android production exports and production fixture isolation passed. `expo install --check` reports dependencies up to date. Expo Doctor passes **20/20**. Node 24.13.0 and pnpm 12.15.0 were used. The changed implementation files are only `apps/mobile/package.json` and `pnpm-lock.yaml`; this report records the results. CI for the pushed dependency commit will be verified before recommending the PR.
+**Local results on the updated graph:** frozen-lockfile installation passed; formatting, lint/import boundaries/token drift, strict types, all **17 tests** (5 contracts, 4 server, 8 mobile), contracts/server builds, web/iOS/Android production exports and production fixture isolation passed. `expo install --check` reports dependencies up to date. Expo Doctor passes **20/20**. Node 24.13.0 and pnpm 12.15.0 were used. The changed implementation files are only `apps/mobile/package.json` and `pnpm-lock.yaml`; this report records the results. **GitHub CI passed** for dependency commit `a3f554c0030e5dde43b578c31ce1cb11de734591`: [run 40907985498](https://github.com/hasanzahran/typeduel/actions/runs/40907985498). Locked installation, the complete quality/build/export step, Expo compatibility and Doctor all passed. This result is recorded in a subsequent documentation-only commit; [PR #2 checks](https://github.com/hasanzahran/typeduel/pull/2/checks) show the current head.
 
 No native session or new screenshot was captured with these patches. `adb devices` found no attached/running Android environment during this pass. Earlier Android captures and the owner's iPhone approvals retain their original dates and tested dependency graph; they are not relabeled as post-update native evidence. Remaining manual iPhone checks below are still pending. M0 acceptance and M1 planning remain gated on that evidence; no M1 implementation or custom keyboard was added.
 
@@ -70,7 +70,7 @@ Computer Use inventory showed iPhone Mirroring running on this Mac. Selecting it
 | Live local API                                     | `/health/live` returned 200 with shared health contract                                                                    |
 | Compiled server smoke                              | Started separately, health passed, SIGTERM exited with code 0                                                              |
 | Browser supplemental review                        | All four screens at 390×844; compact 320×568 navigation/Results and 430×932 Setup reviewed; mode/category behavior checked |
-| GitHub-hosted Actions execution                    | October 28 runs failed at Expo compatibility; October 29 updated-head CI verification pending                              |
+| GitHub-hosted Actions execution                    | Passed on October 29 for dependency commit `a3f554c`; see linked CI run above                                              |
 
 ### Previous dependency compatibility blocker — October 28 (resolved locally October 29)
 
@@ -263,13 +263,13 @@ The proposal should include individually labeled semantic key buttons, Backspace
 - [x] Physical-iPhone Expo Go launch, visual direction and keyboard-open timer/input/Submit visibility confirmed by the owner.
 - [x] October 29 formatting, lint, strict types, 17 tests, server/contracts builds, all production exports and fixture isolation pass on the updated dependency graph.
 - [x] Current Expo compatibility and all 20 Doctor checks pass; patch updates and their transitive dependencies satisfy the unchanged release-age policy.
-- [ ] Current GitHub CI green: verify the October 29 dependency-update head after pushing PR #2.
+- [x] GitHub CI green for dependency commit `a3f554c`: locked install, full quality/build/export suite and Expo checks passed. Current documentation-head status is linked from PR #2.
 - [ ] Native iOS route traversal, all-screen safe areas, Submit/Send, basic VoiceOver and large-text checks confirmed.
 - [ ] iOS screenshot evidence and device/runtime/build details supplied; remote access unavailable, manual steps documented.
 - [x] Gboard predictions remain documented as an **accepted M0 limitation**, with resolution and accessible custom-keyboard evaluation required in M1.
 - [x] Owner-approved PR #1 merge preserved; remaining work isolated on a new M0 branch. No custom keyboard, M1 work, large installation, paid build or architecture/design change.
 
-**Recommendation: keep final M0 acceptance pending; the original merge is complete.** The owner's successful iPhone run removes the previous environment/launch blocker and confirms the key keyboard-overlap scenario. It does not establish the remaining native checks. Expo compatibility is restored. Confirm green CI on PR #2 and close the manual iOS checklist before approving M0. The compatibility changes may be reviewed separately from the still-pending native acceptance evidence; PR #2 must not be merged automatically. Do not start M1. No new application defect was established by this review; the dependency gate and unverified acceptance evidence are distinct issues.
+**Recommendation: keep final M0 acceptance pending; the original merge is complete.** The owner's successful iPhone run removes the previous environment/launch blocker and confirms the key keyboard-overlap scenario. It does not establish the remaining native checks. Expo compatibility and green CI are restored. The PR #2 compatibility fix passes all automated merge gates and is ready for technical review. Full M0 acceptance remains pending the manual iPhone checklist and native smoke on the updated graph. Keep PR #2 in draft for the owner’s final acceptance review; do not merge automatically. The existing design/keyboard approval is preserved and does not imply unreported manual checks passed. Do not start M1. No new application defect was established by this review; the dependency gate and unverified acceptance evidence are distinct issues.
 
 ## Remaining limitations
 
