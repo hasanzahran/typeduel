@@ -1,16 +1,38 @@
 # M0 verification
 
-Updated: 2026-10-28 (America/Los_Angeles). Scope: M0 only. The owner has now confirmed physical-iPhone launch, approved visual direction and keyboard-open timer/composer visibility in Expo Go. Remaining iOS checks are unverified, and current Expo patch compatibility fails. M1 has not started. The owner intentionally merged PR #1; the merge is complete, but M0 acceptance remains pending. Android evidence below was captured on 2026-10-25.
+Updated: 2026-10-29 (America/Los_Angeles). Scope: M0 only. The owner has now confirmed physical-iPhone launch, approved visual direction and keyboard-open timer/composer visibility in Expo Go. Remaining iOS checks are unverified. The eligible SDK 58 patch updates now pass Expo compatibility and all 20 Doctor checks; the updated PR head still requires CI confirmation. M1 has not started. The owner intentionally merged PR #1; the merge is complete, but M0 acceptance remains pending. Android evidence below was captured on 2026-10-25.
 
-## Post-merge acceptance follow-up — 2026-10-28
+## Eligible SDK 58 compatibility update — 2026-10-29
+
+The scheduled retry ran after 09:00 PDT. Expo recommended the previous seven patches plus React Native `0.88.1`; the React Native Jest preset was aligned to that patch. Official npm registry publication timestamps were rechecked before updating. All nine direct updates are stable releases older than 24 hours; SDK 58, React 19.3 and the application architecture are unchanged.
+
+| Package                     | Previous pin | Updated pin | Published (UTC)          |
+| --------------------------- | ------------ | ----------- | ------------------------ |
+| `expo`                      | 58.0.19      | 58.0.21     | 2026-10-28T15:36:05.811Z |
+| `expo-router`               | 58.0.26      | 58.0.28     | 2026-10-28T15:36:42.455Z |
+| `expo-linking`              | 58.0.14      | 58.0.15     | 2026-10-28T15:34:41.340Z |
+| `expo-constants`            | 58.0.13      | 58.0.14     | 2026-10-28T15:35:30.588Z |
+| `expo-font`                 | 58.0.10      | 58.0.11     | 2026-10-28T15:33:20.136Z |
+| `@expo/ui`                  | 58.0.23      | 58.0.25     | 2026-10-28T15:33:03.917Z |
+| `jest-expo`                 | 58.0.12      | 58.0.13     | 2026-10-28T15:31:28.680Z |
+| `react-native`              | 0.88.0       | 0.88.1      | 2026-10-27T14:43:35.156Z |
+| `@react-native/jest-preset` | 0.88.0       | 0.88.1      | 2026-10-27T12:12:19.703Z |
+
+`pnpm --filter @typeduel/mobile update` applied these exact versions under the unchanged `minimumReleaseAge: 1440` policy. Resolution succeeded without exclusions, clock changes, forced installs or compatibility-check suppression. A separate registry audit of **all 53 newly introduced package versions** in the lockfile found none younger than 24 hours. The newest was `@expo/cli@58.1.17`, published **2026-10-28T15:39:30.715Z** (over 1,463 minutes old at the audit); `expo-file-system@58.0.13` was published at **15:39:27.892Z**. Publication metadata came from each package's `https://registry.npmjs.org/<package>` time map. Existing supply-chain and build-script policies are unchanged. pnpm reported four deprecated transitives (`glob@10.5.0`, `glob@7.2.3`, `inflight@1.0.6`, `whatwg-encoding@3.1.1`); these are upstream warnings, not failures of the compatibility or release-age checks.
+
+**Local results on the updated graph:** frozen-lockfile installation passed; formatting, lint/import boundaries/token drift, strict types, all **17 tests** (5 contracts, 4 server, 8 mobile), contracts/server builds, web/iOS/Android production exports and production fixture isolation passed. `expo install --check` reports dependencies up to date. Expo Doctor passes **20/20**. Node 24.13.0 and pnpm 12.15.0 were used. The changed implementation files are only `apps/mobile/package.json` and `pnpm-lock.yaml`; this report records the results. CI for the pushed dependency commit will be verified before recommending the PR.
+
+No native session or new screenshot was captured with these patches. `adb devices` found no attached/running Android environment during this pass. Earlier Android captures and the owner's iPhone approvals retain their original dates and tested dependency graph; they are not relabeled as post-update native evidence. Remaining manual iPhone checks below are still pending. M0 acceptance and M1 planning remain gated on that evidence; no M1 implementation or custom keyboard was added.
+
+## Post-merge acceptance follow-up — 2026-10-28 (historical)
 
 The owner intentionally merged [PR #1](https://github.com/hasanzahran/typeduel/pull/1) at 17:25:18 UTC. Local `main` was fast-forwarded to `origin/main` at merge commit `9a503d7`. The complete `codex/m0-foundation` history through `6793711` is an ancestor of main, and its file tree matches main exactly. No source-branch commits are missing from main at this audit; all implementation files, approved designs, verification documents and 15 Android screenshots are preserved. No revert, rebase or history rewrite was performed.
 
-Remaining work is isolated on `codex/m0-acceptance-followup`, created from that main commit. A one-time continuation is scheduled for **October 29 at 09:00 America/Los_Angeles**, after the known direct/transitive package eligibility times. It must recheck current recommendations and publication times, preserve `minimumReleaseAge: 1440`, and let pnpm enforce eligibility for the full graph. Eligibility is not assumed in advance. Successful updates require a frozen-lockfile install, full quality/build/export suite, Expo compatibility, Expo Doctor and green GitHub CI on the follow-up PR's exact head. The manual iPhone checklist below remains pending; merging PR #1 did not satisfy those checks.
+Remaining work is isolated on `codex/m0-acceptance-followup`, created from that main commit. A one-time continuation was scheduled for **October 29 at 09:00 America/Los_Angeles**, after the known direct/transitive package eligibility times. It must recheck current recommendations and publication times, preserve `minimumReleaseAge: 1440`, and let pnpm enforce eligibility for the full graph. Eligibility is not assumed in advance. Successful updates require a frozen-lockfile install, full quality/build/export suite, Expo compatibility, Expo Doctor and green GitHub CI on the follow-up PR's exact head. The manual iPhone checklist below remains pending; merging PR #1 did not satisfy those checks.
 
 The last pre-merge [CI run for `6793711`](https://github.com/hasanzahran/typeduel/actions/runs/40735302320) is marked **cancelled** overall: locked installation and quality/build checks passed, and its Expo compatibility step failed. This is not green CI. No dependency, lockfile or security-policy changes were made during the post-merge sync; only this report was updated.
 
-Post-merge [draft PR #2](https://github.com/hasanzahran/typeduel/pull/2) is open on `codex/m0-acceptance-followup`. Its [CI run for `f6a1f3b`](https://github.com/hasanzahran/typeduel/actions/runs/40736024863) passed frozen installation and the complete quality/build/export step, then failed Expo compatibility. The scheduled October 29 retry remains active; PR #2 must not be merged automatically. After M0 is ready, prepare a detailed M1 plan from the approved PRD and System Design, covering Socket.IO rooms, matchmaking, server-authoritative scoring, spoken-word audio, timers, three attempts, two extra audio replays, difficulty progression and accessible custom-keyboard evaluation. M1 planning is requested in Plan Mode; implementation requires separate owner approval. No M1 work is included in this follow-up.
+Post-merge [draft PR #2](https://github.com/hasanzahran/typeduel/pull/2) is open on `codex/m0-acceptance-followup`. Its [CI run for `f6a1f3b`](https://github.com/hasanzahran/typeduel/actions/runs/40736024863) passed frozen installation and the complete quality/build/export step, then failed Expo compatibility. The scheduled October 29 retry is documented above; PR #2 must not be merged automatically. After M0 is ready, prepare a detailed M1 plan from the approved PRD and System Design, covering Socket.IO rooms, matchmaking, server-authoritative scoring, spoken-word audio, timers, three attempts, two extra audio replays, difficulty progression and accessible custom-keyboard evaluation. M1 planning is requested in Plan Mode; implementation requires separate owner approval. No M1 work is included in this follow-up.
 
 ## Physical iPhone confirmation — 2026-10-28
 
@@ -26,7 +48,7 @@ These results close the previous unknowns about physical-iPhone launch and the r
 
 Computer Use inventory showed iPhone Mirroring running on this Mac. Selecting it was blocked by missing macOS Accessibility and Screen Recording permissions, including on retry. No iPhone UI could be inspected or captured remotely. No iOS screenshot files were created, and no browser or Android image is presented as iOS evidence. Manual capture steps are below.
 
-## Executed checks — refreshed 2026-10-28
+## Executed checks — refreshed 2026-10-29
 
 **Approval follow-up rerun (October 28, after 21:51 UTC):** frozen-lockfile installation, formatting, lint/boundaries/tokens, strict types, all 17 tests, contracts/server builds, web/iOS/Android production exports and fixture isolation passed again. Expo compatibility still reports the same seven recommended patches; Expo Doctor remains 19/20 with only the SDK-version check failing. No dependencies, lockfile or security settings changed. The required patches have not yet reached their documented October 29 eligibility times.
 
@@ -42,15 +64,15 @@ Computer Use inventory showed iPhone Mirroring running on this Mac. Selecting it
 | Jest mobile UI/API configuration                   | 8 tests passed; process exits normally                                                                                     |
 | Production builds                                  | Contracts + server compiled; iOS/Android Hermes and web bundles exported                                                   |
 | Release fixture scan                               | Passed; fixture sentinel/banner absent from production bundles                                                             |
-| Expo dependency compatibility                      | Failed on 2026-10-28: seven recommended SDK 58 patch updates                                                               |
-| Expo Doctor                                        | 19/20 on 2026-10-28; SDK package-version check failed                                                                      |
+| Expo dependency compatibility                      | Passed on 2026-10-29 after eligible SDK 58 / RN patch updates                                                              |
+| Expo Doctor                                        | 20/20 on 2026-10-29; no issues detected                                                                                    |
 | Documented `pnpm dev`                              | Starts contracts watcher, Fastify, Metro                                                                                   |
 | Live local API                                     | `/health/live` returned 200 with shared health contract                                                                    |
 | Compiled server smoke                              | Started separately, health passed, SIGTERM exited with code 0                                                              |
 | Browser supplemental review                        | All four screens at 390×844; compact 320×568 navigation/Results and 430×932 Setup reviewed; mode/category behavior checked |
-| GitHub-hosted Actions execution                    | Failed on 2026-10-28 at Expo compatibility; locked install and all quality/build checks passed. See CI follow-up below     |
+| GitHub-hosted Actions execution                    | October 28 runs failed at Expo compatibility; October 29 updated-head CI verification pending                              |
 
-### Current dependency compatibility blocker
+### Previous dependency compatibility blocker — October 28 (resolved locally October 29)
 
 **Resumed verification, 2026-10-28 17:22:08 UTC (10:22:08 PDT):** Expo still recommends the same seven versions in the registry table below. Fresh registry reads confirmed all seven direct packages and the previously identified `@expo/cli@58.1.17` transitive dependency remain younger than 24 hours. No install was forced, no packages were changed, and the dependency/security configuration and lockfile remain unchanged. The existing frozen-lockfile install and full `pnpm check` passed again (17 tests and all builds/production exports). `expo install --check` still failed on the seven mismatches; the separately rerun Expo Doctor again passed 19/20, failing only package-version compatibility. Previous successful iPhone/Android evidence is preserved; the six remaining manual iPhone checks are still unverified.
 
@@ -72,7 +94,7 @@ Computer Use inventory showed iPhone Mirroring running on this Mac. Selecting it
 
 The preceding acceptance follow-up attempted a targeted patch update, but pnpm rejected the new versions and their dependencies with `ERR_PNPM_NO_MATURE_MATCHING_VERSION`. The repository's `pnpm-workspace.yaml` sets `minimumReleaseAge: 1440` (24 hours); the recommended Expo packages and dependencies were published on October 28 around 15:31–15:40 UTC. No dependency or lockfile changes were applied. The age policy and validation checks were not disabled or excluded. This follow-up rechecked the registry ages and did not repeat an ineligible update. The existing frozen-lockfile installation and full quality suite were rerun successfully without changing dependencies. Once the versions satisfy the policy, apply the eligible compatible patches, update the lockfile, and repeat frozen installation, all checks and affected native smoke tests. This is dependency recommendation drift, not an observed iPhone crash or layout defect.
 
-Current CI follow-up: [run 40731332144](https://github.com/hasanzahran/typeduel/actions/runs/40731332144) on October 28 **failed** at Expo dependency compatibility for `888fe0d14f0f2cc131a914070f776a03df4f8c73`. Locked installation and all formatting/lint/types/tests/build/fixture checks passed; the failing step reported the same seven patch mismatches as local validation. Expo Doctor did not execute in CI because the preceding install check failed; its 19/20 result above is the separate local run. This report is a subsequent documentation-only change; the latest head's checks are linked from [PR #1](https://github.com/hasanzahran/typeduel/pull/1). Older green runs below are historical evidence, not current acceptance.
+Historical CI follow-up: [run 40731332144](https://github.com/hasanzahran/typeduel/actions/runs/40731332144) on October 28 **failed** at Expo dependency compatibility for `888fe0d14f0f2cc131a914070f776a03df4f8c73`. Locked installation and all formatting/lint/types/tests/build/fixture checks passed; the failing step reported the same seven patch mismatches as local validation. Expo Doctor did not execute in CI because the preceding install check failed; its 19/20 result above is the separate local run. This report is a subsequent documentation-only change; the latest head's checks are linked from [PR #1](https://github.com/hasanzahran/typeduel/pull/1). Older green runs below are historical evidence, not current acceptance.
 
 ## GitHub publication follow-up (historical)
 
@@ -234,27 +256,27 @@ The owner has assigned complete resolution of keyboard assistance to **M1 gamepl
 
 The proposal should include individually labeled semantic key buttons, Backspace and Submit, a readable answer buffer, stable focus order, VoiceOver/TalkBack and switch-control support, high contrast, scalable labels and layouts, and minimum 44 pt iOS / 48 dp Android touch targets. A full QWERTY row cannot fit 48 dp keys on a compact 360 dp display, so review a compact alternative (for example paged/fewer-column layouts) with accessibility users before choosing a design. Do not shrink targets or disable assistive technology to fit. Define supported languages/diacritics and hardware-keyboard handling explicitly; hiding the soft keyboard alone leaves native text injection paths open. Review fairness and accessible input accommodations together. Test compact screens, large text, screen readers and real devices before adopting it. Even a controlled keyboard cannot prevent another device or other external help.
 
-### Final acceptance checklist and recommendation — 2026-10-28
+### Final acceptance checklist and recommendation — 2026-10-29
 
 - [x] M0 foundation, approved architecture/tokens, four labeled mock screens and local health API implemented; no M1 functionality.
 - [x] Android four-screen/navigation and keyboard evidence retained from October 25.
 - [x] Physical-iPhone Expo Go launch, visual direction and keyboard-open timer/input/Submit visibility confirmed by the owner.
-- [x] October 28 formatting, lint, strict types, 17 tests, server/contracts builds, all production exports and fixture isolation pass.
-- [ ] Current Expo compatibility / all 20 Doctor checks: fails on seven newly recommended patches; upgrade blocked by the existing 24-hour release-age policy.
-- [ ] Current GitHub CI green: October 28 rerun failed at Expo compatibility; the quality/build step passed. See the linked run above.
+- [x] October 29 formatting, lint, strict types, 17 tests, server/contracts builds, all production exports and fixture isolation pass on the updated dependency graph.
+- [x] Current Expo compatibility and all 20 Doctor checks pass; patch updates and their transitive dependencies satisfy the unchanged release-age policy.
+- [ ] Current GitHub CI green: verify the October 29 dependency-update head after pushing PR #2.
 - [ ] Native iOS route traversal, all-screen safe areas, Submit/Send, basic VoiceOver and large-text checks confirmed.
 - [ ] iOS screenshot evidence and device/runtime/build details supplied; remote access unavailable, manual steps documented.
 - [x] Gboard predictions remain documented as an **accepted M0 limitation**, with resolution and accessible custom-keyboard evaluation required in M1.
 - [x] Owner-approved PR #1 merge preserved; remaining work isolated on a new M0 branch. No custom keyboard, M1 work, large installation, paid build or architecture/design change.
 
-**Recommendation: keep final M0 acceptance pending; the original merge is complete.** The owner's successful iPhone run removes the previous environment/launch blocker and confirms the key keyboard-overlap scenario. It does not establish the remaining native checks. Close the manual iOS checklist and restore current Expo compatibility/green CI through the small follow-up PR before approving M0. Do not start M1. No new application defect was established by this review; the dependency gate and unverified acceptance evidence are distinct issues.
+**Recommendation: keep final M0 acceptance pending; the original merge is complete.** The owner's successful iPhone run removes the previous environment/launch blocker and confirms the key keyboard-overlap scenario. It does not establish the remaining native checks. Expo compatibility is restored. Confirm green CI on PR #2 and close the manual iOS checklist before approving M0. The compatibility changes may be reviewed separately from the still-pending native acceptance evidence; PR #2 must not be merged automatically. Do not start M1. No new application defect was established by this review; the dependency gate and unverified acceptance evidence are distinct issues.
 
 ## Remaining limitations
 
 - Native compilation of standalone Android/iOS binaries was not performed. Hermes/web exports validate bundling, not native binary builds. A standalone binary is not needed to finish this M0 Expo Go checklist.
 - Physical-iPhone evidence is limited to the three owner confirmations above. Full VoiceOver/TalkBack, hardware-keyboard, alternate IME and reduced-motion system-toggle testing remain unverified. Basic iOS accessibility/large-text smoke is still part of M0 acceptance; exhaustive device/input coverage remains later work.
 - Xcode installation or macOS changes are unnecessary for the chosen physical Expo Go route and were not initiated. Remote capture failed on Computer Use permissions, not on Expo Go availability.
-- M0 preview actions remain disconnected from gameplay. No auth, sockets, database, word/audio pipeline, cloud resources or paid services were added. Approved architecture, design and PNG references are unchanged. The dependency policy and pinned packages are unchanged after the blocked patch attempt.
+- M0 preview actions remain disconnected from gameplay. No auth, sockets, database, word/audio pipeline, cloud resources or paid services were added. Approved architecture, design and PNG references are unchanged. The dependency policy is unchanged; the eligible patch updates are listed above. Post-update native smoke evidence remains pending.
 
 ## Files added by M0
 
