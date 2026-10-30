@@ -304,10 +304,16 @@ describe('atomic HTTP/socket admission and durable participant discovery', () =>
     gate.release();
     await starting;
     await h.runtime.reconcile();
-    await eventually(
-      async () => (await a.sync()).admission.kind === 'match',
-      'bound match after uncertain creation',
-    );
+    await eventually(async () => {
+      // Drive the manual recovery scheduler without flooding session.sync at a frozen clock.
+      await h!.runtime.reconcile();
+      return h!.packets.some(
+        (packet) =>
+          packet.kind === 'event' &&
+          packet.event === 'match.found' &&
+          packet.playerId === a.playerId,
+      );
+    }, 'bound match after uncertain creation');
     const recovered = await a.sync();
     expect(recovered.admission.kind).toBe('match');
     if (recovered.admission.kind !== 'match')
