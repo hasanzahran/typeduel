@@ -99,7 +99,7 @@ Registry metadata checked October 30, 2026 at 04:46 UTC (October 29 locally):
 | `socket.io-client` | `4.8.4`            | 2026-09-25 08:35:02.910 | Mobile runtime; server test dependency |
 | `jose`             | `6.2.13`           | 2026-10-20 06:21:48.616 | Server JWT verification                |
 
-All proposed direct releases satisfy 24 hours. Latest `jose 6.2.14`, published 2026-10-29 09:51:45.094 UTC, was not yet eligible at the check; do not use it merely because it is latest. Recheck eligibility and registry metadata at implementation time. No installation/full transitive resolution has occurred; direct-package age is not proof of graph eligibility. pnpm must accept the entire graph with `minimumReleaseAge: 1440`, existing build-script allowlist and strict engines unchanged. If it cannot, report the exact blocker rather than add an exception.
+All proposed direct releases satisfy 24 hours. Latest `jose 6.2.14`, published 2026-10-29 09:51:45.094 UTC, was not yet eligible at the check; do not use it merely because it is latest. Recheck eligibility and registry metadata at implementation time. At planning time no installation/full transitive resolution had occurred; direct-package age alone was not proof of graph eligibility. During implementation pnpm accepted the entire graph under the unchanged policy. Subsequent frozen installations also passed. pnpm must continue to accept the entire graph with `minimumReleaseAge: 1440`, existing build-script allowlist and strict engines unchanged. If it cannot, report the exact blocker rather than add an exception.
 
 Keep Node 24.13.0, pnpm 12.15.0, Expo SDK 58, React Native, Fastify, TypeScript, Zod and PostgreSQL/Drizzle pins unchanged. Socket.IO v4 server/client compatibility and React Native usage are documented upstream; project compatibility still requires TypeScript, Jest, Expo checks and production exports. No new native module, Supabase client SDK, crypto polyfill, test framework or rate-limit dependency is proposed.
 
@@ -146,7 +146,7 @@ With three worker slots, Backend, Mobile and QA code concurrently after freeze. 
 
 ## 9. Tests and acceptance criteria
 
-No Increment 03 test has been run or passed during this planning pass. Accepted Increment 02 evidence remains historical evidence, not proof of this new transport.
+This table records the approved planning gates. Actual implementation verification is recorded in section 13; accepted Increment 02 evidence remains historical evidence, not proof of the new transport.
 
 | Gate                  | Required evidence                                                                                                                                                                                                                                                  |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -187,7 +187,7 @@ Work that can proceed independently once its preparation scope is approved:
 
 Dependency chain: Increment 03 authenticated admission/recovery + owner-approved eight-clip generation and listening + permitted reachable test environment -> Increment 04 asset delivery/preflight/minimal bindings -> first recorded physical two-phone match. Full lobby polish remains 05. Competitive keyboard assistance remains an M1 acceptance requirement; evaluation can be prepared independently, but no custom keyboard is selected or implemented here.
 
-## 11. Approval requested
+## 11. Original approval checkpoint — approved
 
 Approve this bounded Increment 03 implementation, its three proposed dependency pins (subject to the full 24-hour policy), the transactional participant-binding migration, the transport/session decisions and exclusive worktree assignments. Routine coding, fixes and cross-agent reviews then proceed within this scope. Paid services, audio generation, visual changes, custom keyboard implementation, Increment 04 implementation and merging remain outside this approval.
 
@@ -219,3 +219,158 @@ createGameRuntime({
 - During bootstrap, the actor installs all validated original lifecycle receipts followed by the catch-up wake. `bootstrapReady` waits for its confirmed outcome, not merely actor construction or a paused reconciliation call. Additional lifecycle events hand off once without a coordinator/actor gap.
 
 Backend owns implementation of these private seams. QA owns independent integration tests and physical two-device preparation; Mobile owns its frozen six-module surface and Increment 04 binding strategy; Content owns only the candidate worksheet. Lead owns changes to the shared wire freeze.
+
+## 13. Implementation verification and review handoff
+
+Status: integrated implementation verified; ready for owner review subject to the exact final PR-head checks. Code verification passed at `bd198eb` in [GitHub Actions run 41009831862](https://github.com/hasanzahran/typeduel/actions/runs/41009831862). M0 visuals, dependency policies and the accepted engine rules are preserved. No Increment 04 implementation, audio generation, provisioning or merge has occurred.
+
+### Contributions and refinements
+
+- Lead preserved planning commit `36a5375`, froze strict shared transport contracts and the discoverable-store interface, installed only approved pins under the workspace security policy, implemented/reviewed the asymmetric JWT verifier and integrated isolated worktrees.
+- Backend implemented the participant-binding migration, atomic admission, durable discovery, authenticated HTTP/Socket.IO runtime, session fencing, bounded ingress, buffered original lifecycle receipts during uncertain creation, actor bootstrap/reconciliation and post-commit publication.
+- Mobile implemented six headless modules with tests: token-provider injection, connection/session recovery, committed-state consumer, deliberate gameplay commands, room/queue controls and display-only clock estimates. Screens, routes, theme, keyboard and audio code remain unchanged.
+- QA independently implemented real PostgreSQL plus real Socket.IO/JWKS tests, fault injection and child-process crash/fencing tests. Existing tests now use distinct participants for independent matches, as required by exclusive participant bindings.
+- Content prepared the eight-candidate editorial worksheet and bounded future recording request; all owner editorial, voice, rights, listening, asset-byte and physical-playback decisions remain pending. QA and Mobile prepared device and minimal-binding strategies only.
+
+Cross-review caught and corrected a UTF-16 length-bound regression in the shared answer schema, a pending-admission mutation race, and an injected-clock receiver loss at transport limiters. The clock defect was exposed by the first integrated PostgreSQL transport run; it was not disguised by changing the valid method-based clock fixture. Further corrections preserve control-request correlation on rejection, deny unauthorized sync before actor work, enforce lobby expiry despite delayed callbacks, recover lifecycle scheduling after publication failure, retain confirmed creation reservations on bootstrap failure, and reclaim only safe expired disconnected admission records. Mobile clock sampling uses one correlated ACK completion path. QA explicitly ticks the initial round timer and drains due timer replacements at the same trusted instant in its manual-clock harness. A bounded regression covers replacement, duplicate ticks and non-firing time advancement; production timing rules are unchanged. No rule or visual-design change was required.
+
+### Environment and evidence boundaries
+
+All local verification uses Node 24.13.0 and pnpm 12.15.0. Separate worktrees have independent frozen installations. The integration checkout contains owner-provided untracked agent setup files; these remain untouched and excluded. Complete formatting/build validation runs in a clean committed validation worktree rather than changing ignores or formatting the setup package.
+
+No local `psql` or Docker executable is available on PATH. `apps/server/.env` and `apps/mobile/.env` are absent in the integration checkout. Real database tests run in the previously approved GitHub Actions PostgreSQL 18.6 service, pinned to `sha256:979bccfde35445db618c65107d27d08c6c21339d8dc3ad4c830c6633947be0e4`, with fsync, full-page writes and synchronous commit verified on. No local or external database was provisioned.
+
+Actual transport tests use locally signed credentials and a local JWKS provider, real network sockets and private synthetic descriptors. No live Supabase project or physical phone has been authenticated in this increment. The production source refuses admission while reviewed audio coverage is unavailable. Export success cannot establish native networking, audio synchronization or competitive keyboard fairness.
+
+### Completed automated gates
+
+| Check                                                | Actual result                                                                                                                                                                                                                                                                                      |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dependency resolution / frozen installation          | Approved Socket.IO/server+client 4.8.4 and jose 6.2.13; pnpm accepted the full graph. Clean CI independently verified all **1,102 lockfile entries** under unchanged `minimumReleaseAge: 1440`, strict engines and build-script allowlist. Frozen installation passed locally and in both CI jobs. |
+| Formatting / lint / boundaries / tokens / TypeScript | Passed locally in the clean validation worktree and in CI. No approved visual primitives or security-policy files changed.                                                                                                                                                                         |
+| Contracts                                            | **25 passed**.                                                                                                                                                                                                                                                                                     |
+| Server unit/component                                | **119 passed**. Includes actual network-socket component tests with an in-memory store; these are distinct from PostgreSQL evidence.                                                                                                                                                               |
+| Mobile                                               | **54 passed**, eight Jest suites. Headless adapters plus preserved existing component tests.                                                                                                                                                                                                       |
+| Real PostgreSQL and Socket.IO integration            | **102 passed**, 12 files: 47 existing/binding cases, 54 independent transport cases and one manual-clock regression. Actual PostgreSQL 18.6 durability settings verified by CI.                                                                                                                    |
+| Builds / production exports                          | Contracts and server builds; web, iOS and Android production exports passed. Release scan excludes M0 fixture markers and new private multiplayer fixture prefixes. These are exports, not signed native binaries.                                                                                 |
+| Expo                                                 | Dependency check reports up to date; Expo Doctor **20/20** passed.                                                                                                                                                                                                                                 |
+| GitHub CI                                            | Both `quality` and `postgres-integration` passed at implementation head `bd198eb` in run 41009831862. Final documentation/PR-head checks are verified after this report commit and linked in the PR handoff.                                                                                       |
+
+Total: **300 automated tests passed**. No integration test was skipped for missing local infrastructure. Full local quality validation passed at `0e9ab6b`; subsequent fixture/release-guard edits passed formatting/frozen installation and the complete CI suite at `bd198eb`. The clean final documentation head is also validated before review handoff.
+
+Earlier integration runs exposed the clock receiver defect and manual-clock simulation faults described above; those runs are retained in Actions history and are not counted as passes. No security guard, production rate limit, reconnect boundary or assertion of authoritative scoring was weakened to obtain the passing result. Final protocol semantics preserve original receipt order, all 48 counted acknowledgements, before/at/after ten-second grace, post-commit-only points, immutable terminal outcomes and viewer-private snapshots.
+
+No material Increment 03 implementation blocker remains after final-head checks pass. Existing provider/device/audio prerequisites below are deliberately separate from this increment's automated acceptance. M1 itself is not complete.
+
+### Remaining prerequisites for the first physical pair
+
+After Increment 03 review and explicit Increment 04 approval, Backend can implement reviewed private catalog/opaque audio delivery while Mobile implements exact-version preflight, playback and minimal approved Game/Results bindings. QA can independently implement asset/failure scenarios and execute the prepared physical-device protocol once builds and devices exist. Content editorial and bounded recording approval can proceed independently of coding.
+
+Required inputs: owner approval of candidate spelling/variants and a consistent voice; authorization for at most eight initial recordings and their listening review; actual immutable assets with measured duration/hash/size; an existing approved reachable backend/private database and asymmetric-auth test accounts; physical iPhone and Android access; and an agreed shared late-start/interruption policy. None is silently replaced by synthetic fixtures. Broader mobile flow polish remains Increment 05. Gboard assistance and the reviewed competitive keyboard solution remain M1 acceptance requirements; no custom keyboard is implemented here.
+
+### Exact changed files
+
+69 tracked files relative to accepted `origin/main`; owner-provided untracked setup files are excluded.
+
+```text
+README.md
+apps/mobile/package.json
+apps/mobile/src/auth/token-provider.test.ts
+apps/mobile/src/auth/token-provider.ts
+apps/mobile/src/features/match/clock.test.ts
+apps/mobile/src/features/match/clock.ts
+apps/mobile/src/features/match/commands.test.ts
+apps/mobile/src/features/match/commands.ts
+apps/mobile/src/features/match/connection.test.ts
+apps/mobile/src/features/match/connection.ts
+apps/mobile/src/features/match/consumer.test.ts
+apps/mobile/src/features/match/consumer.ts
+apps/mobile/src/features/match/lobby.test.ts
+apps/mobile/src/features/match/lobby.ts
+apps/server/.env.example
+apps/server/drizzle/0001_player_match_bindings.sql
+apps/server/drizzle/meta/0001_snapshot.json
+apps/server/drizzle/meta/_journal.json
+apps/server/package.json
+apps/server/src/app.ts
+apps/server/src/auth/verifier.ts
+apps/server/src/config/env.ts
+apps/server/src/db/match-store.ts
+apps/server/src/db/schema.ts
+apps/server/src/db/types.ts
+apps/server/src/game/actor.ts
+apps/server/src/game/lifecycle.ts
+apps/server/src/game/registry.ts
+apps/server/src/game/source.ts
+apps/server/src/http/rooms.ts
+apps/server/src/matchmaking/coordinator.ts
+apps/server/src/runtime.ts
+apps/server/src/server.ts
+apps/server/src/socket/handlers.ts
+apps/server/src/socket/limits.ts
+apps/server/src/socket/server.ts
+apps/server/src/socket/session.ts
+apps/server/tests/auth/verifier.test.ts
+apps/server/tests/game/actor.test.ts
+apps/server/tests/game/registry.test.ts
+apps/server/tests/game/runtime-fixtures.ts
+apps/server/tests/http/rooms.test.ts
+apps/server/tests/integration/backend/bindings.test.ts
+apps/server/tests/integration/backend/store.test.ts
+apps/server/tests/integration/qa/atomicity.test.ts
+apps/server/tests/integration/qa/receipt-order.test.ts
+apps/server/tests/integration/qa/support/harness.ts
+apps/server/tests/integration/transport-qa/admission.test.ts
+apps/server/tests/integration/transport-qa/auth.test.ts
+apps/server/tests/integration/transport-qa/delivery.test.ts
+apps/server/tests/integration/transport-qa/privacy.test.ts
+apps/server/tests/integration/transport-qa/receipt-order.test.ts
+apps/server/tests/integration/transport-qa/recovery.test.ts
+apps/server/tests/integration/transport-qa/support/harness.ts
+apps/server/tests/integration/transport-qa/support/tokens.ts
+apps/server/tests/integration/transport-qa/support/transport-child.ts
+apps/server/tests/matchmaking/coordinator.test.ts
+docs/IMPLEMENTATION_PLAN.md
+docs/M1_CONTENT_PREPARATION.md
+docs/M1_INCREMENT_03_DEVICE_PROTOCOL.md
+docs/M1_INCREMENT_03_PLAN.md
+docs/M1_MOBILE_INTEGRATION.md
+packages/contracts/src/gameplay.ts
+packages/contracts/src/index.ts
+packages/contracts/src/realtime.ts
+packages/contracts/tests/gameplay.test.ts
+packages/contracts/tests/realtime.test.ts
+pnpm-lock.yaml
+scripts/check-release.mjs
+```
+
+### Preserved implementation history
+
+These commits precede the final verification-document commit; agent changes were integrated without rewriting main or squashing away review fixes.
+
+```text
+36a5375 docs(m1): coordinate authenticated multiplayer increment 03 plan
+f30b7d9 feat(contracts): freeze authenticated realtime protocol and integration seams
+fb574d4 feat(server): verify bounded authenticated Supabase JWT principals
+2d672f7 fix(contracts): enforce approved UTF-16 answer length limit
+512dece feat(server): persist player discovery and bootstrap ordered connection receipts
+f8a3fbf test(db): isolate independent match participant fixtures
+5f209e2 test(auth): isolate signature and algorithm rejection assertions
+fb4519f feat(server): add authenticated room and match socket runtime
+4547968 feat(mobile): add authenticated headless match consumer
+5b91f8d test(transport): verify authenticated multiplayer recovery and privacy
+9b43e8c fix(server): serialize pending admission mutations per player
+ec722b2 test(transport): scope discovery waits to current admission
+e3abfb5 test(transport): preserve final disconnect under starting churn
+6c93e9e test(transport): await committed trusted reconnect outcome
+ed10b8d test(transport): verify concurrent wins and paused commit publication
+53e0aee docs(content): prepare eight candidate editorial and audio review
+7e5c3d3 fix(server): preserve clock receiver in transport rate limits
+b7c0d9d fix(server): guard transport correlation and lifecycle boundaries
+a670bd4 fix(mobile): complete clock samples only from correlated ACKs
+0e9ab6b fix(server): reclaim expired disconnected admission records
+98d6bd6 test(transport): tick initial round source scheduling explicitly
+a703a6b test(transport): reconcile uncertain creation without sync flooding
+1926694 test(release): exclude multiplayer secret fixtures from exports
+bd198eb test(transport): drain due clock replacements at the same tick
+```
