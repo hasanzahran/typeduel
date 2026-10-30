@@ -1,12 +1,12 @@
-name: M0 quality
+name: TypeDuel quality
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, 'codex/**']
 permissions:
   contents: read
 concurrency:
-  group: m0-${{ github.workflow }}-${{ github.ref }}
+  group: quality-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 jobs:
   quality:
@@ -61,5 +61,28 @@ jobs:
         run: npm install --global pnpm@12.15.0
       - name: Install locked dependencies under workspace security policy
         run: pnpm install --frozen-lockfile
+      - name: Verify PostgreSQL version and durability settings
+        working-directory: apps/server
+        run: |
+          node --input-type=module <<'JS'
+          import pg from 'pg';
+          const client = new pg.Client({ connectionString: process.env.TEST_DATABASE_URL });
+          await client.connect();
+          try {
+            const { rows: [settings] } = await client.query(`SELECT
+              current_setting('server_version_num') AS version,
+              current_setting('fsync') AS fsync,
+              current_setting('full_page_writes') AS full_page_writes,
+              current_setting('synchronous_commit') AS synchronous_commit`);
+            console.log(settings);
+            if (settings.version !== '180006' ||
+                settings.fsync !== 'on' || settings.full_page_writes !== 'on' ||
+                settings.synchronous_commit !== 'on') {
+              throw new Error('Unexpected PostgreSQL version or durability settings');
+            }
+          } finally {
+            await client.end();
+          }
+          JS
       - name: Real PostgreSQL durability, ordering, ownership and recovery tests
         run: pnpm test:integration
