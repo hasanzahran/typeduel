@@ -121,6 +121,24 @@ function harness(state?: MatchState) {
 }
 
 describe('serialized authoritative actor', () => {
+  it('sanitizes throwing admission objects and does not persist malformed commands', async () => {
+    const h = harness();
+    const actor = h.actor();
+    const raw = {
+      get type() {
+        throw new Error('private-submitted-secret');
+      },
+    };
+    const result = await actor.acceptPlayerCommand(
+      { playerId: h.record.state.participants[0].playerId },
+      raw,
+    );
+    expect(result.error?.code).toBe('INVALID_COMMAND');
+    expect(JSON.stringify(result)).not.toContain('private-submitted-secret');
+    expect(h.store.commitTransition).not.toHaveBeenCalled();
+    actor.close();
+  });
+
   it('keeps queued input detached and hides a point until its transaction commits', async () => {
     const h = harness();
     const gate = deferred();

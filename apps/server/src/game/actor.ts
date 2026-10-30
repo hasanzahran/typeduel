@@ -243,9 +243,9 @@ export function createMatchActor(options: {
   function enqueue(command: GameCommand | null): Promise<ActorResult> {
     // No await before receipt capture and insertion. Caller mutation after return
     // cannot change the queued payload or its fingerprint.
-    const receivedAtMonoMs = clock.monoNow();
-    const ingressSequence = ++sequence;
     try {
+      const receivedAtMonoMs = clock.monoNow();
+      const ingressSequence = ++sequence;
       ensureActive();
       if (queue.length >= maxQueueLength) throw new StoreError('UNAVAILABLE');
       const copy = structuredClone(command);
@@ -273,27 +273,34 @@ export function createMatchActor(options: {
       principal: { playerId: string },
       raw: unknown,
     ): Promise<ActorResult> {
-      const parsed = packetSchema.safeParse(raw);
-      if (!parsed.success)
+      try {
+        const parsed = packetSchema.safeParse(raw);
+        if (!parsed.success)
+          return Promise.resolve({
+            ack: null,
+            error: engineError('INVALID_COMMAND'),
+          });
+        if (
+          !record.state.participants.some(
+            (p) => p.playerId === principal.playerId,
+          )
+        ) {
+          return Promise.resolve({
+            ack: null,
+            error: engineError('UNAUTHORIZED'),
+          });
+        }
+        return enqueue({
+          type: parsed.data.type,
+          playerId: principal.playerId,
+          payload: parsed.data.payload,
+        });
+      } catch {
         return Promise.resolve({
           ack: null,
           error: engineError('INVALID_COMMAND'),
         });
-      if (
-        !record.state.participants.some(
-          (p) => p.playerId === principal.playerId,
-        )
-      ) {
-        return Promise.resolve({
-          ack: null,
-          error: engineError('UNAUTHORIZED'),
-        });
       }
-      return enqueue({
-        type: parsed.data.type,
-        playerId: principal.playerId,
-        payload: parsed.data.payload,
-      });
     },
     acceptTrustedCommand(
       command: Exclude<
