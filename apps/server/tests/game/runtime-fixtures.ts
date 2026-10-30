@@ -9,12 +9,15 @@ import {
   type OwnerLease,
 } from '../../src/db/types.js';
 import { createGameRuntime } from '../../src/runtime.js';
-import type { RuntimeHooks } from '../../src/runtime.js';
+import type { RuntimeHooks, RuntimeConfig } from '../../src/runtime.js';
 import type { Reply, SessionState } from '@typeduel/contracts';
 
 export async function testRuntime(
   hooks?: RuntimeHooks,
-  options: { checkAvailability?: () => Promise<boolean> } = {},
+  options: {
+    checkAvailability?: () => Promise<boolean>;
+    config?: Partial<RuntimeConfig>;
+  } = {},
 ) {
   const records = new Map<string, PersistedMatch>();
   const bindings = new Map<string, string>();
@@ -136,7 +139,7 @@ export async function testRuntime(
         };
       },
     },
-    config: { resultHoldMs: 0 },
+    config: { resultHoldMs: 0, ...options.config },
     ...(hooks ? { hooks } : {}),
   });
   const origin = await runtime.listen();

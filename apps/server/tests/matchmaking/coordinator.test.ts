@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { it, expect } from 'vitest';
+import { io } from 'socket.io-client';
 import { testRuntime, call, sync } from '../game/runtime-fixtures.js';
 it('deduplicates control mutations and fences stale revisions after request expiry', async () => {
   const h = await testRuntime();
@@ -114,6 +115,55 @@ it('correlates rate-limit and delivery-fallback control errors without adding ID
       ok: false,
       error: { code: 'RATE_LIMITED', requestId: null },
     });
+  } finally {
+    await h.close();
+  }
+});
+
+it('reclaims disconnected idle users only after their settled retry cache expires', async () => {
+  const h = await testRuntime(undefined, { config: { maxPlayers: 1 } });
+  try {
+    const a = await h.connect();
+    const initial = await sync(a.socket);
+    await call(a.socket, 'queue.join', {
+      requestId: randomUUID(),
+      expectedAdmissionRevision: initial.admissionRevision,
+      setup: { mode: 'classic', categorySlug: 'general', difficulty: 1 },
+    });
+    a.socket.disconnect();
+    await new Promise<void>(setImmediate);
+    const rejected = io(`${h.origin}/game`, {
+      transports: ['websocket'],
+      reconnection: false,
+      autoConnect: false,
+      auth: { accessToken: randomUUID() },
+    });
+    try {
+      const error = new Promise((resolve) =>
+        rejected.once('game.error', resolve),
+      );
+      rejected.connect();
+      expect(await error).toMatchObject({ code: 'RATE_LIMITED' });
+    } finally {
+      rejected.disconnect();
+    }
+    await h.advance(602000);
+    const b = await h.connect();
+    expect((await sync(b.socket)).admission.kind).toBe('idle');
+  } finally {
+    await h.close();
+  }
+});
+
+it('reclaims an idle disconnected user with no outstanding retry history', async () => {
+  const h = await testRuntime(undefined, { config: { maxPlayers: 1 } });
+  try {
+    const a = await h.connect();
+    await sync(a.socket);
+    a.socket.disconnect();
+    await new Promise<void>(setImmediate);
+    const b = await h.connect();
+    expect((await sync(b.socket)).admission.kind).toBe('idle');
   } finally {
     await h.close();
   }

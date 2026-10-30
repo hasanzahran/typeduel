@@ -62,9 +62,35 @@ export function createCoordinator(options: {
   const rooms = new Map<string, Room>();
   const codes = new Map<string, string>();
   let closed = false;
+  // A new session has its own scope, but retained retries and live claims must
+  // survive disconnects. Reclaim only records with nothing left to reconcile.
+  function reclaim(exceptId: string) {
+    if (users.size < config.maxPlayers) return;
+    for (const [id, u] of users) {
+      if (
+        id === exceptId ||
+        options.sessions().current(id) ||
+        u.pendingMutation
+      )
+        continue;
+      if (
+        u.place.kind !== 'idle' &&
+        !(u.place.kind === 'match' && u.place.terminal)
+      )
+        continue;
+      if (
+        [...u.requests.values()].some(
+          (entry) => !entry.settled || entry.expires > clock.monoNow(),
+        )
+      )
+        continue;
+      users.delete(id);
+    }
+  }
   const user = (id: string) => {
     let u = users.get(id);
     if (!u) {
+      reclaim(id);
       if (users.size >= config.maxPlayers)
         throw new TransportFailure('SERVER_UNAVAILABLE');
       u = { revision: 0, place: { kind: 'idle' }, requests: new Map() };
@@ -279,6 +305,7 @@ export function createCoordinator(options: {
   const api = {
     scope,
     canConnect(id: string, replacing = false) {
+      reclaim(id);
       const u = users.get(id);
       if (!u) return users.size < config.maxPlayers;
       if (
