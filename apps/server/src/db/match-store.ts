@@ -150,6 +150,15 @@ export function createMatchStore(options: {
     let commitSent = false;
     let committed = false;
     let destroy = false;
+    let connectionLost = false;
+    const lost = () => {
+      connectionLost = true;
+      destroy = true;
+    };
+    // pg-pool removes its idle error listener while a client is checked out.
+    // Cover asynchronous connection loss between queries, including fault hooks.
+    client.on('error', lost);
+    client.on('end', lost);
     try {
       await client.query('BEGIN');
       await lockOwner(
@@ -162,6 +171,7 @@ export function createMatchStore(options: {
       const result = await run(client);
       if (settings.commitHooks !== false)
         await hooks?.('before_commit', context);
+      if (connectionLost) throw new StoreError('COMMIT_UNKNOWN');
       if (!owner.isActive()) throw new StoreError('FENCED');
       commitSent = true;
       await client.query('COMMIT');
@@ -170,7 +180,7 @@ export function createMatchStore(options: {
         await hooks?.('after_commit', context);
       return result;
     } catch (error) {
-      if (commitSent) throw new StoreError('COMMIT_UNKNOWN');
+      if (commitSent || connectionLost) throw new StoreError('COMMIT_UNKNOWN');
       try {
         await client.query('ROLLBACK');
       } catch {
@@ -190,6 +200,9 @@ export function createMatchStore(options: {
     } finally {
       // A connection with an uncertain COMMIT is never reused for another match.
       client.release(destroy || (commitSent && !committed));
+      // release() installs the pool's listener synchronously, so there is no gap.
+      client.removeListener('error', lost);
+      client.removeListener('end', lost);
       if (key) inFlight.delete(key);
     }
   }
