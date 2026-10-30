@@ -2,7 +2,7 @@
 
 **Date:** October 29, 2026
 
-**Status:** M0 formally accepted by the owner; PR #2 merged. M1 architecture and staged scope approved; increment 01 is implemented with 84 passing local tests and successful Expo/build/export checks; final CI verification and owner review remain the handoff gate.
+**Status:** M0 formally accepted. M1 Increment 01 accepted and merged in PR #3 (`99910e5`). Increment 02 durable persistence/actor implementation passes 104 unit/component tests and 44 PostgreSQL integration tests; final-head review is the handoff gate. Increment 03 remains unimplemented and requires separate approval.
 
 **Sources of truth:** TypeDuel PRD v0.4, System Design v1.2, UI/UX Design v1.0, plus the owner-approved M1 scope and development reconnect policy recorded below.
 
@@ -17,7 +17,7 @@ Use **Codex + VS Code + GitHub**, with a **pnpm TypeScript monorepo**. Each mile
 - PR #1 and PR #2 are merged; M0 is formally accepted. PR #2 merge commit is `26f8476ed900d4cfd17a97f229e0226ca7251c91`. Preserve the Android captures and owner-confirmed iPhone results in `M0_VERIFICATION.md`. Missing iOS screenshots and device/runtime/exact-build metadata remain documentation-only gaps, not fabricated passes.
 - The owner approved expanded M1 planning: real two-player gameplay, Socket.IO rooms, basic General-only matchmaking, authoritative scoring/timing/attempts, reviewed prerecorded audio, Classic/Challenge progression, snapshots/recovery and competitive-input evaluation. Core prototype work previously assigned to M2/M3/M5 is intentionally brought into M1; later milestones retain production content tooling, tuning, social/account features and release hardening.
 - Development reconnect policy is now approved: **10,000 ms grace**, server deadlines continue, and an unresolved disconnect interrupts an ongoing match with **no match winner/forfeit award**. This resolves the previously open development grace-expiry policy; production abandonment policy still requires review.
-- Implement through small, independently testable increments, separate commits and review checkpoints. Approval of the overall plan is not approval to implement increment 01: present its exact scope first and wait for the owner. Pause at each increment's review checkpoint before moving on.
+- Implement through small, independently testable increments, separate commits and review checkpoints. Increment 01 is accepted; the owner has explicitly approved Increment 02 and its four dependency pins plus an ephemeral PostgreSQL CI service. No new approval is needed for routine fixes within this increment. Pause at each increment's review checkpoint before moving on.
 - Preserve `minimumReleaseAge: 1440`, strict types, existing dependency/build-script policies and the approved UI/UX. Any gameplay-driven visual change needs explicit review. Do not provision external services, incur costs, generate large Polly batches or install large system dependencies without approval.
 - Start real audio integration with a small reviewed prerecorded set. Synthetic word/duration data in engine unit tests are test fixtures only, never an approved playable catalog or production client data.
 - Gboard predictions remain an accepted M0 limitation with resolution required for M1 competitive acceptance. Evaluate native alternatives and an accessible custom keyboard before choosing; implementation of a custom keyboard remains unapproved.
@@ -52,15 +52,15 @@ Acceptance:
 
 **Goal:** Two devices complete a real match with matching authoritative state and durable outcomes, using reviewed prerecorded audio and the approved Classic/Challenge rules.
 
-**First review:** [Increment 01 — contracts and deterministic game core](M1_INCREMENT_01_PLAN.md). The owner approved this bounded increment and all three implementation commits; stop for review before increment 02.
+**Current implementation:** [Increment 02 — durable authoritative actor](M1_INCREMENT_02_PLAN.md). Increment 01 is accepted and merged. Stop for owner review before Increment 03.
 
 | Increment                             | Bounded deliverable                                                                                                                                              | Review checkpoint                                                                                                |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | 01 — Contracts and deterministic core | Shared strict gameplay schemas, pure server engine, timelines, idempotent attempts, scoring, progression, bounded match completion, development reconnect policy | Deterministic unit/contract tests and unchanged M0 app; no sockets, database, real audio or UI integration       |
 | 02 — Persistence and actor boundary   | Drizzle/PostgreSQL migrations, atomic outcomes, serialized actor/clock adapter, identity boundary, crash-safe commit-before-publish behavior                     | Real database race/rollback/idempotency tests; confirm local infrastructure separately before provisioning       |
 | 03 — Rooms, matchmaking and recovery  | Authenticated Socket.IO namespace, exactly-two-player private rooms, immutable setup, General-only compatible queues, snapshots and reconnect                    | Two independent socket clients converge under loss, duplicate commands, cancellation and 10-second grace expiry  |
-| 04 — Reviewed audio integration       | Small approved prerecorded set, private opaque delivery, same-asset preflight, scheduled playback and typing, two extra local replays, telemetry                 | iOS/Android playback/timing measurements and failure handling; no live TTS or large Polly batch                  |
-| 05 — Mobile gameplay integration      | Wire approved Home/Setup/Game/Results primitives to canonical state; contextual lobby, result and reconnect states                                               | Owner review of gameplay-required UI changes; real two-device matches with preserved keyboard/safe-area behavior |
+| 04 — Audio and first playable pair       | Small approved prerecorded set, private opaque delivery, same-asset preflight, scheduled playback and typing, two extra local replays, telemetry                 | First physical iPhone/Android General/Classic/Level-1 match using reviewed audio and minimal approved Game/Results bindings; measured playback/failure evidence                  |
+| 05 — Complete mobile flows      | Wire approved Home/Setup/Game/Results primitives to canonical state; contextual lobby, result and reconnect states                                               | Owner review of gameplay-required UI changes; real two-device matches with preserved keyboard/safe-area behavior |
 | 06 — Fairness and acceptance          | Complete competitive-input evaluation, reviewed solution validation, device/network/accessibility matrix and final M1 evidence                                   | No M1 sign-off until keyboard-assistance requirement is resolved through an approved approach                    |
 
 Keyboard evaluation can be planned alongside the early increments and must be reviewed **before** the input implementation is selected or changed. Increment 06 is the final acceptance checkpoint, not permission to postpone the design decision until after building a custom keyboard.
@@ -121,9 +121,11 @@ Deliverables: real iOS/Android builds via Expo EAS, cross-platform two-phone smo
 
 Acceptance: zero inconsistent completed-match scores; all three gameplay restrictions exercised; sound and timer correct; app policies/privacy/account deletion met; product owner approves before any production publish.
 
-## Immediate next action — review completed increment 01
+## Immediate next action — complete and review Increment 02
 
-Review [M1_INCREMENT_01_PLAN.md](M1_INCREMENT_01_PLAN.md): exact files, zero-new-dependency approach, deterministic command/time semantics, contract privacy, acceptance tests and commit checkpoints. The approved contracts, deterministic engine and independent QA tests are implemented. All 84 local tests, quality checks, Expo Doctor (20/20), frozen installation and production exports passed; see the increment verification section for evidence and limitations. Verify CI at the final pushed head and obtain owner review before Increment 02. No new dependencies, services, UI changes or automatic main merge are authorized.
+Implement the approved [durable actor plan](M1_INCREMENT_02_PLAN.md): transactional PostgreSQL persistence, original-receipt FIFO, durable ACKs, ownership fencing and crash interruption. Backend and independent QA work concurrently; Mobile and Content prepare the next interfaces and editorial review. Keep the UI, minimum-release-age and build-script policies intact. Require real PostgreSQL integration tests and green CI at the submitted PR head. No automatic merge.
+
+After acceptance and separate implementation approval, Increment 03 can run authenticated transport, mobile committed-state consumption and independent socket QA concurrently. Editorial review can proceed independently. Increment 04 brings a bounded part of Game/Results integration forward for the first real physical two-phone match; broader Home/Setup/lobby flows follow. Device access, approved development infrastructure, reviewed audio and fair late-start behavior remain explicit prerequisites.
 
 ## Useful official documentation
 

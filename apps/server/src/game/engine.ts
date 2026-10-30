@@ -184,6 +184,27 @@ function abort(
   ]);
 }
 
+// Recovery only: a new process must never run elapsed old-process timers.
+export function interruptForServerRestart(state: MatchState): TransitionResult {
+  const result: TransitionResult = {
+    state: structuredClone(state),
+    batches: [],
+    ack: null,
+    error: null,
+  };
+  if (terminal(state)) return result;
+  result.state.phase = 'ABORTED';
+  result.state.interruption = { reason: 'SERVER_RESTART' };
+  commit(result, [
+    {
+      type: 'match.interrupted',
+      matchId: state.matchId,
+      payload: { reason: 'SERVER_RESTART' },
+    },
+  ]);
+  return result;
+}
+
 export function getNextWakeAt(state: MatchState): number | null {
   if (terminal(state)) return null;
   const due = state.participants.flatMap((p) =>

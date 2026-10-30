@@ -1,6 +1,6 @@
-# TypeDuel · M0
+# TypeDuel
 
-Expo/React Native mobile shell, local Fastify API, public Zod contracts, and development-only screen previews. This milestone does not implement a playable match, authentication, persistence, audio playback, matchmaking, or paid infrastructure.
+Expo/React Native mobile shell, Fastify API, shared Zod contracts and an authoritative gameplay core. M0 and M1 Increment 01 are accepted. Increment 02 adds private PostgreSQL persistence and a serialized match actor; it does not connect sockets, mobile gameplay, authentication or audio. The mobile screens remain development previews.
 
 ## Prerequisites
 
@@ -47,7 +47,26 @@ pnpm expo:check
 
 `pnpm check` runs formatting, lint, types, tests, and builds. `build` compiles contracts/server and exports iOS, Android, and web production bundles; it **does not compile signed native binaries**. Tests use Vitest for contracts/API and Jest with Expo's preset for native components. Server production startup is `pnpm --filter @typeduel/server start` after building.
 
-The only HTTP route is `GET /health/live`. Database-backed readiness and `/v1` APIs are intentionally absent until their milestones. SIGINT/SIGTERM close Fastify with a bounded shutdown.
+The only HTTP route is `GET /health/live`. It reports process liveness, not database readiness. The actor is exercised through its internal interface and tests; HTTP/Socket.IO wiring belongs to later increments. SIGINT/SIGTERM close Fastify with a bounded shutdown.
+
+## Increment 02 database development
+
+Use an explicitly configured private PostgreSQL database. The CI integration job runs PostgreSQL 18.6 in an ephemeral container with normal durability enabled. No local database installation or managed service is included. Keep credentials in the server environment, never mobile configuration.
+
+```sh
+# DATABASE_URL must already identify an authorized development database.
+pnpm build:contracts
+pnpm --filter @typeduel/server db:migrate
+
+# TEST_DATABASE_URL must identify a disposable test database.
+pnpm test:integration
+```
+
+The migration command loads the server `.env` and applies reviewed committed SQL. It does not run automatically with the API. `db:generate` prepares a migration for review; do not use schema push. The schema uses an explicitly validated private search path; generated foreign-key schema qualifiers must be reviewed for that namespace strategy before committing a new migration. Never run integration tests against production: they create and remove isolated test schemas and terminate test-owned sessions/processes.
+
+Ownership requires a dedicated PostgreSQL session, so a transaction-pooling connection is unsuitable. Gameplay writes atomically commit before publication. A new fenced owner preserves completed results and interrupts unfinished matches rather than resuming an old process clock. See [the Increment 02 plan and verification](docs/M1_INCREMENT_02_PLAN.md) for exact boundaries and test results.
+
+Unit tests remain database-independent. Integration tests fail if `TEST_DATABASE_URL` is missing or the database is unavailable; they are not silently skipped. `pnpm check` and `pnpm test:integration` are separate required acceptance commands.
 
 ## Design and architecture
 
@@ -57,4 +76,4 @@ Read `AGENTS.md` and all planning documents before changing behavior. M0 decisio
 
 ## CI and release
 
-GitHub Actions runs frozen installation, quality checks, bundle exports, and Expo dependency validation for PRs and pushes to main. No deployment, cloud resource creation, or store upload is configured. Native screenshots require separately available simulators/emulators; bundle export is not native acceptance. Review and approve M0 before beginning M1.
+GitHub Actions runs frozen installation, quality checks, bundle exports, Expo dependency validation and a separate PostgreSQL integration job for PRs and pushes to main or `codex/**` branches. Both jobs must pass at the submitted head. No deployment, managed service creation or store upload is configured. Native screenshots require separately available devices/simulators; bundle export is not native gameplay acceptance. Each M1 increment requires owner review before the next implementation begins.
