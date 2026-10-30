@@ -248,9 +248,8 @@ export class MatchConnection {
         if (parsed.success) this.handleError(parsed.data.code);
         else void this.synchronize();
       });
-      socket.on('clock.pong', (value) => {
-        if (current()) this.clock.receive(value);
-      });
+      // clock.ping also emits a redundant pong event. Only its correlated ACK
+      // completes sampling, so event-before-ACK cannot consume the sample twice.
       socket.connect();
     } catch (error) {
       if (generation !== this.generation || this.stopped) return;
@@ -409,9 +408,8 @@ export class MatchConnection {
     const requestId = this.newRequestId();
     this.clock.start(requestId);
     try {
-      return this.clock.receive(
-        await this.request('clock.ping', { requestId }),
-      );
+      const sample = await this.request('clock.ping', { requestId });
+      return sample.requestId === requestId && this.clock.receive(sample);
     } catch {
       return false;
     }

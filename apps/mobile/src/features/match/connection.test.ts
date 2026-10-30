@@ -249,3 +249,36 @@ test('publication between sync snapshot capture and ACK forces a fresh sync befo
   expect(connection.status).toBe('ready');
   expect(connection.consumer.state?.admissionRevision).toBe(1);
 });
+test('clock sampling uses only the correlated ACK when pong is emitted first', async () => {
+  await ready();
+  const socket = sockets[0]!;
+  const pending = connection.sampleClock();
+  const packet = socket.packets.at(-1)!;
+  const { requestId } = packet.payload as { requestId: string };
+  const sample = { requestId, serverReceivedAt: 1000, serverSentAt: 1010 };
+  socket.fire('clock.pong', sample);
+  expect(connection.clock.now()).toBeNull();
+  jest.advanceTimersByTime(100);
+  packet.ack({ ok: true, data: sample });
+  expect(await pending).toBe(true);
+  expect(connection.clock.now()).toBe(1055);
+  socket.fire('clock.pong', { ...sample, serverSentAt: 1040 });
+  expect(connection.clock.now()).toBe(1055);
+});
+test('a clock ACK cannot consume another outstanding request sample', async () => {
+  await ready();
+  const socket = sockets[0]!;
+  const first = connection.sampleClock();
+  const firstPacket = socket.packets.at(-1)!;
+  const second = connection.sampleClock();
+  const secondPacket = socket.packets.at(-1)!;
+  const { requestId } = secondPacket.payload as { requestId: string };
+  const sample = { requestId, serverReceivedAt: 1000, serverSentAt: 1010 };
+  jest.advanceTimersByTime(100);
+  firstPacket.ack({ ok: true, data: sample });
+  expect(await first).toBe(false);
+  expect(connection.clock.now()).toBeNull();
+  secondPacket.ack({ ok: true, data: sample });
+  expect(await second).toBe(true);
+  expect(connection.clock.now()).toBe(1055);
+});
