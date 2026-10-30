@@ -137,7 +137,10 @@ describe('real PostgreSQL actor receipt order and publication', () => {
     const secondInitial = await s.store.createMatch({
       owner: s.owner,
       operationId: randomUUID(),
-      state: createFixtureMatch({ matchId: randomUUID() }),
+      state: createFixtureMatch({
+        matchId: randomUUID(),
+        participants: [randomUUID(), randomUUID()],
+      }),
     });
     s.record = secondInitial;
     const second = await prepareRound(s);
