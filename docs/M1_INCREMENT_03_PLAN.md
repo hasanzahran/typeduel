@@ -1,6 +1,6 @@
 # M1 Increment 03 — Authenticated real-time multiplayer
 
-Status: proposed for owner approval; implementation has not started. Prepared October 29, 2026 (America/Los_Angeles). PR #4 is merged and Increment 02 is accepted. Baseline: `origin/main` merge `f428f0d`, whose tree matches accepted implementation head `9c2830a`.
+Status: owner-approved; Increment 03 implementation authorized. Shared freeze and implementation evidence are recorded below. Prepared October 29, 2026 (America/Los_Angeles). PR #4 is merged and Increment 02 is accepted. Baseline: `origin/main` merge `f428f0d`, whose tree matches accepted implementation head `9c2830a`.
 
 Sources of truth: [PRD](PRD.md), [System Design](SYSTEM_DESIGN.md), [UI/UX](UI_UX_DESIGN.md), [implementation plan](IMPLEMENTATION_PLAN.md), [Increment 02](M1_INCREMENT_02_PLAN.md), [mobile handoff](M1_MOBILE_INTEGRATION.md), and [content preparation](M1_CONTENT_PREPARATION.md). This plan extends the accepted engine and actor; it does not reopen their architecture.
 
@@ -190,3 +190,32 @@ Dependency chain: Increment 03 authenticated admission/recovery + owner-approved
 ## 11. Approval requested
 
 Approve this bounded Increment 03 implementation, its three proposed dependency pins (subject to the full 24-hour policy), the transactional participant-binding migration, the transport/session decisions and exclusive worktree assignments. Routine coding, fixes and cross-agent reviews then proceed within this scope. Paid services, audio generation, visual changes, custom keyboard implementation, Increment 04 implementation and merging remain outside this approval.
+
+## 12. Approved implementation freeze
+
+Planning commit `36a5375` is preserved on integration branch `codex/m1-03-realtime`. The owner approved implementation, the three dependency pins, participant-binding migration, worktree ownership and routine fixes. No Increment 04 implementation, audio generation, provisioning or merge is authorized.
+
+The executable freeze is `packages/contracts/src/realtime.ts`. It uses lower-case admission `kind`, scoped previews, and `Reply<T> = {ok:true,data:T} | {ok:false,error:{code,requestId}}`. Public transport errors carry no arbitrary message. Gameplay error text is the existing static engine message. Gameplay requests retain their frozen shape; transport errors for them use a null requestId. Control mutations include `expectedAdmissionRevision`, checked after an existing identical request cache lookup and before executing a new mutation. This fences expired-cache retries without a tombstone store. Mutation HTTP requests supply current opaque session identity in `x-typeduel-session-id`; authenticate the JWT independently. Room preview replies carry session scope and `preview`. `match.update` carries session scope as well as the committed update; nested session-match admission uses an unscoped committed update. HTTP POST join and DELETE use `MutationSchema`; read-only control requests use `RequestSchema`.
+
+Private runtime interface frozen for Backend/QA:
+
+```ts
+createGameRuntime({
+  database, owner, store?, clock?, verifier, source,
+  config?, hooks?,
+}): Promise<{
+  app: FastifyInstance;
+  listen(options?: {host?: string; port?: number}): Promise<string>;
+  reconcile(): Promise<void>;
+  close(): Promise<void>;
+}>
+```
+
+- `database: Database`, `owner: OwnerLease`, `store?: DiscoverableMatchStore` (extends existing MatchStore with `readLatestForPlayer(playerId): Promise<PersistedMatch|null>`), and `clock?: ActorClock` reuse accepted adapters. Runtime initialization completes `interruptOrphans` before readiness. The caller owns database/lease teardown; runtime close stops its own actors/jobs/sockets/Fastify only.
+- `TokenVerifier.verifyAccessToken(token): Promise<{playerId:string,expiresAtUtcMs:number}>`. `createJwtVerifier({issuer,audience,key:JWTVerifyGetKey,nowUtcMs?})` exercises real signatures with injected clock and local JWKS in tests. Production `createSupabaseVerifier({supabaseUrl})` derives trusted HTTPS issuer/JWKS and bounded remote-key settings; it cannot enable a test verifier from environment configuration.
+- `RoundSource.checkAvailability(setup): Promise<boolean>` and `nextRound({matchId,setup,roundNumber,level,usedWordIds}): Promise<RoundDescriptor>`. Real production source remains unavailable in 03; only tests supply synthetic descriptors. The registry freezes the initial clock anchor before asynchronous creation work.
+- Runtime config exposes server region, lobby lifetime/grace, result hold, reconciliation interval, source timeout, allowed origins and maxPlayers. Server-owned configuration never permits a client-selected grace, score or deadline.
+- Runtime hooks expose existing actor/store fault boundaries; a synchronous outbound filter `{kind:'event'|'ack',event,playerId,payload} -> 'send'|'drop'`; and a synchronous `afterGameplayAdmission({event,playerId,matchId,attemptId?})` observer immediately after invoking actor admission, before awaiting it. No raw text or client timing authority enters the observer. Tests that use it to prove queued ordering run below queue capacity; dispatch observation alone is not proof that a capacity-rejected command was admitted.
+- During bootstrap, the actor installs all validated original lifecycle receipts followed by the catch-up wake. `bootstrapReady` waits for its confirmed outcome, not merely actor construction or a paused reconciliation call. Additional lifecycle events hand off once without a coordinator/actor gap.
+
+Backend owns implementation of these private seams. QA owns independent integration tests and physical two-device preparation; Mobile owns its frozen six-module surface and Increment 04 binding strategy; Content owns only the candidate worksheet. Lead owns changes to the shared wire freeze.

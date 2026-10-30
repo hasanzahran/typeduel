@@ -31,7 +31,8 @@
     "react-native-web": "0.21.4",
     "react-native-safe-area-context": "5.10.1",
     "react-native-screens": "4.30.0",
-    "zod": "4.6.7"
+    "zod": "4.6.7",
+    "socket.io-client": "4.8.4"
   },
   "devDependencies": {
     "@typeduel/config": "workspace:*",

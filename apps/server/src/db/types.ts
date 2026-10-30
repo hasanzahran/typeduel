@@ -64,6 +64,10 @@ export interface MatchStore {
   }): Promise<OperationResolution>;
   interruptOrphans(owner: OwnerLease): Promise<number>;
 }
+/** Increment 03 discovery; existing core store adapters remain independently usable. */
+export interface DiscoverableMatchStore extends MatchStore {
+  readLatestForPlayer(playerId: string): Promise<PersistedMatch | null>;
+}
 export type StoreErrorCode =
   | 'INVALID_STATE'
   | 'CONFLICT'
