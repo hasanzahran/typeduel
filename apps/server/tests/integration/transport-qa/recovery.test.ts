@@ -132,6 +132,13 @@ describe('durable socket recovery and observed disconnect grace', () => {
       await observed.promise;
       h.clock.set(at + offset);
       const reconnected = await h.connect(a.playerId);
+      await eventually(async () => {
+        const saved = (await h!.store.readCommitted(matchId))!.state;
+        return offset >= 10_000
+          ? saved.phase === 'ABORTED'
+          : saved.participants.find((p) => p.playerId === a.playerId)
+              ?.connected === true;
+      }, 'committed trusted reconnect outcome');
       const synced = await reconnected.match(matchId);
       expect(synced.snapshot.phase === 'ABORTED').toBe(offset >= 10_000);
       expect(synced.snapshot.participants.map((p) => p.score)).toEqual([0, 0]);
