@@ -24,7 +24,8 @@
     "test": "pnpm build:contracts && pnpm -r test",
     "build": "pnpm build:contracts && pnpm --filter @typeduel/server build && pnpm --filter @typeduel/mobile build && node scripts/check-release.mjs",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
-    "expo:check": "pnpm --filter @typeduel/mobile exec expo install --check && pnpm --filter @typeduel/mobile exec expo-doctor"
+    "expo:check": "pnpm --filter @typeduel/mobile exec expo install --check && pnpm --filter @typeduel/mobile exec expo-doctor",
+    "test:integration": "pnpm build:contracts && pnpm --filter @typeduel/server test:integration"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

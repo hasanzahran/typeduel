@@ -9,6 +9,7 @@ import {
   ScheduledRoundSchema,
   MatchSnapshotSchema,
   MatchCompletionSchema,
+  MatchInterruptionSchema,
   RoundResultSchema,
   TransitionBatchSchema,
   MAX_COUNTED_ATTEMPTS,
@@ -78,6 +79,38 @@ const result = {
 const completion = { winnerId: a, draw: false, roundCount: 5, scores };
 
 describe('strict gameplay contracts', () => {
+  it('identifies server restart without inventing a winner or revealing private state', () => {
+    expect(MatchInterruptionSchema.parse({ reason: 'SERVER_RESTART' })).toEqual(
+      {
+        reason: 'SERVER_RESTART',
+      },
+    );
+    for (const extra of [
+      { winnerId: a },
+      { checkpoint: {} },
+      { correctWord: 'secret' },
+    ]) {
+      expect(
+        MatchInterruptionSchema.safeParse({
+          reason: 'SERVER_RESTART',
+          ...extra,
+        }).success,
+      ).toBe(false);
+    }
+    expect(
+      TransitionBatchSchema.safeParse({
+        stateVersion: 2,
+        events: [
+          {
+            type: 'match.interrupted',
+            matchId,
+            payload: { reason: 'SERVER_RESTART' },
+          },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+
   it('rejects impossible Challenge progression and mixed terminal batches', () => {
     expect(
       MatchSnapshotSchema.safeParse({

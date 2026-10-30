@@ -145,7 +145,11 @@ export const MatchCompletionSchema = z
     );
   }, 'Inconsistent completed outcome');
 export const MatchInterruptionSchema = z.strictObject({
-  reason: z.enum(['DISCONNECT_TIMEOUT', 'SOURCE_UNAVAILABLE']),
+  reason: z.enum([
+    'DISCONNECT_TIMEOUT',
+    'SOURCE_UNAVAILABLE',
+    'SERVER_RESTART',
+  ]),
 });
 export const ParticipantSchema = Score.extend({
   connected: z.boolean(),
