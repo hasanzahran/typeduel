@@ -30,6 +30,7 @@ type Place =
   | { kind: 'match'; matchId: string; terminal: boolean };
 interface User {
   revision: number;
+  pendingMutation?: string;
   place: Place;
   requests: Map<
     string,
@@ -234,10 +235,12 @@ export function createCoordinator(options: {
       await prior.promise;
       return api.state(session, false);
     }
+    if (u.pendingMutation) throw new TransportFailure('ADMISSION_CONFLICT');
     if (request.expectedAdmissionRevision !== u.revision)
       throw new TransportFailure('RETRY_WINDOW_EXPIRED');
     if (u.requests.size >= 128) throw new TransportFailure('RATE_LIMITED');
     u.revision += 1;
+    u.pendingMutation = request.requestId;
     const entry = {
       fingerprint,
       promise: Promise.resolve(),
@@ -249,6 +252,7 @@ export function createCoordinator(options: {
       .then(apply)
       .finally(() => {
         entry.settled = true;
+        if (u.pendingMutation === request.requestId) delete u.pendingMutation;
       });
     await entry.promise;
     assert(session);

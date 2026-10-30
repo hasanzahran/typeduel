@@ -33,3 +33,51 @@ it('deduplicates control mutations and fences stale revisions after request expi
     await h.close();
   }
 });
+
+it('does not let a pending availability check race a newer cross-action mutation', async () => {
+  let release!: (value: boolean) => void;
+  let entered!: () => void;
+  const gate = new Promise<boolean>((resolve) => {
+    release = resolve;
+  });
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const h = await testRuntime(undefined, {
+    checkAvailability: () => {
+      entered();
+      return gate;
+    },
+  });
+  try {
+    const a = await h.connect();
+    const initial = await sync(a.socket);
+    const firstRequest = {
+      requestId: randomUUID(),
+      expectedAdmissionRevision: initial.admissionRevision,
+      setup: { mode: 'classic', categorySlug: 'general', difficulty: 1 },
+    };
+    const pending = call(a.socket, 'queue.join', firstRequest);
+    await started;
+    const during = await sync(a.socket);
+    await expect(
+      call(a.socket, 'queue.join', {
+        ...firstRequest,
+        requestId: randomUUID(),
+        expectedAdmissionRevision: during.admissionRevision,
+      }),
+    ).rejects.toThrow('ADMISSION_CONFLICT');
+    await expect(
+      call(a.socket, 'queue.leave', {
+        requestId: randomUUID(),
+        expectedAdmissionRevision: during.admissionRevision,
+      }),
+    ).rejects.toThrow('ADMISSION_CONFLICT');
+    release(true);
+    await pending;
+    expect((await sync(a.socket)).admission.kind).toBe('queued');
+  } finally {
+    release(false);
+    await h.close();
+  }
+});

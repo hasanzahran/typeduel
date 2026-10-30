@@ -12,7 +12,10 @@ import { createGameRuntime } from '../../src/runtime.js';
 import type { RuntimeHooks } from '../../src/runtime.js';
 import type { Reply, SessionState } from '@typeduel/contracts';
 
-export async function testRuntime(hooks?: RuntimeHooks) {
+export async function testRuntime(
+  hooks?: RuntimeHooks,
+  options: { checkAvailability?: () => Promise<boolean> } = {},
+) {
   const records = new Map<string, PersistedMatch>();
   const bindings = new Map<string, string>();
   let now = 1000;
@@ -106,6 +109,7 @@ export async function testRuntime(hooks?: RuntimeHooks) {
     },
     source: {
       async checkAvailability() {
+        if (options.checkAvailability) return options.checkAvailability();
         return true;
       },
       async nextRound(input) {
