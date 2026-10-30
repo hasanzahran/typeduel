@@ -99,13 +99,25 @@ describe('trusted JWT verification', () => {
   });
   it('rejects wrong signatures and HMAC algorithm substitution', async () => {
     const other = await generateKeyPair('ES256');
-    const token = await new SignJWT({ sub: subject })
+    const token = await new SignJWT({
+      sub: subject,
+      iss: issuer,
+      aud: 'authenticated',
+      role: 'authenticated',
+      exp: now / 1000 + 60,
+    })
       .setProtectedHeader({ alg: 'ES256', kid: 'reviewed' })
       .sign(other.privateKey);
     await expect(verifier().verifyAccessToken(token)).rejects.toThrow(
       /^Authentication failed$/,
     );
-    const hmac = await new SignJWT({ sub: subject })
+    const hmac = await new SignJWT({
+      sub: subject,
+      iss: issuer,
+      aud: 'authenticated',
+      role: 'authenticated',
+      exp: now / 1000 + 60,
+    })
       .setProtectedHeader({ alg: 'HS256' })
       .sign(new Uint8Array(32));
     await expect(verifier().verifyAccessToken(hmac)).rejects.toThrow(
