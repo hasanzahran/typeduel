@@ -486,6 +486,14 @@ export function createMatchStore(options: {
               operationId,
               matchId,
             });
+            // A takeover may leave terminal rows attached to their original
+            // owner. They remain readable, but cannot resolve a new owner's write.
+            if (
+              current &&
+              (current.owner.ownerId !== owner.token.ownerId ||
+                current.owner.epoch !== owner.token.epoch)
+            )
+              return { status: 'fenced' as const };
             if (
               current?.lastOperationId === operationId &&
               current.storeRevision === expectedRevision + 1n

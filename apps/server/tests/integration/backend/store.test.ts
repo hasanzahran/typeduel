@@ -190,4 +190,28 @@ describe('PostgreSQL durable store baseline', () => {
     release();
     expect((await pending).lastOperationId).toBe(operationId);
   });
+  it('does not resolve an older owner operation as a new owner write', async () => {
+    const state = createFixtureMatch({ matchId: randomUUID() });
+    const operationId = randomUUID();
+    await store.createMatch({ owner, operationId, state });
+    await owner.release();
+    owner = await acquireOwner({
+      connectionString,
+      schemaName,
+      ownerId: randomUUID(),
+    });
+    expect(
+      await store.resolveOperation({
+        owner,
+        matchId: state.matchId,
+        operationId,
+        expectedRevision: 0n,
+      }),
+    ).toEqual({ status: 'fenced' });
+    // Reading the historical checkpoint remains possible before recovery.
+    expect((await store.readCommitted(state.matchId))?.lastOperationId).toBe(
+      operationId,
+    );
+    await store.interruptOrphans(owner);
+  });
 });
