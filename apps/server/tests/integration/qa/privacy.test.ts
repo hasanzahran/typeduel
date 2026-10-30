@@ -177,6 +177,7 @@ describe('committed actor payload privacy and version coherence', () => {
     for (let round = 0; round < 4; round += 1) await winRound(s);
     const prepared = await prepareRound(s);
     const actor = s.actor();
+    const rawGuess = ` ${prepared.descriptor.canonicalText.toUpperCase()} `;
     const beforeVersion = s.record.state.stateVersion;
     const result = await actor.acceptPlayerCommand(
       { playerId: s.record.state.participants[0].playerId },
@@ -186,7 +187,7 @@ describe('committed actor payload privacy and version coherence', () => {
           matchId: s.record.state.matchId,
           roundId: prepared.descriptor.roundId,
           attemptId: randomUUID(),
-          text: prepared.descriptor.canonicalText,
+          text: rawGuess,
         },
       },
     );
@@ -196,6 +197,12 @@ describe('committed actor payload privacy and version coherence', () => {
     expect(s.publications).toHaveLength(2);
     for (const { update } of s.publications) {
       expect(update.snapshot.phase).toBe('COMPLETED');
+      expect(MatchSnapshotSchema.safeParse(update.snapshot).success).toBe(true);
+      if (update.snapshot.phase !== 'COMPLETED')
+        throw new Error('Expected completed snapshot');
+      expect(update.snapshot.result.correctWord).toBe(
+        prepared.descriptor.canonicalText,
+      );
       expect(update.snapshot.stateVersion).toBe(durable.state.stateVersion);
       expect(update.batches).toHaveLength(1);
       expect(update.batches[0]?.events.map((event) => event.type)).toEqual([
@@ -208,10 +215,7 @@ describe('committed actor payload privacy and version coherence', () => {
       expect(TransitionBatchSchema.safeParse(update.batches[0]).success).toBe(
         true,
       );
-      assertPublic(update, [
-        prepared.descriptor.canonicalText,
-        prepared.descriptor.wordId,
-      ]);
+      assertPublic(update, [rawGuess, prepared.descriptor.wordId]);
     }
   });
 

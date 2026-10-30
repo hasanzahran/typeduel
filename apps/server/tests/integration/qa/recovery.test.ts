@@ -10,6 +10,7 @@ import {
   createFixtureMatch,
   createRoundDescriptor,
   prepareReadyRound,
+  tickAt,
 } from '../../game/fixtures.js';
 import {
   barrier,
@@ -20,6 +21,7 @@ import {
   eventually,
   ManualClock,
   prepareRound,
+  persistCandidate,
   settle,
   spawnActorChild,
   winRound,
@@ -215,6 +217,11 @@ describe('real PostgreSQL owner fencing and restart', () => {
           packets.push({ playerId: player.playerId, payload, ack: result.ack });
         }
       }
+      expect(s.record.state.phase).toBe('ACTIVE_TYPING');
+      await persistCandidate(
+        s,
+        tickAt(s.record.state, prepared.monoSchedule.deadlineAt),
+      );
     }
     const completed = s.record;
     expect(completed.state.phase).toBe('COMPLETED');
@@ -303,6 +310,94 @@ describe('real PostgreSQL owner fencing and restart', () => {
 });
 
 describe('real PostgreSQL process death boundaries', () => {
+  it('fences an old process that remains alive while the new process waits for its guarded transaction', async () => {
+    const testDb = (standalone = await createTestDatabase());
+    const connectionString = testDb.config.connectionString!;
+    await migrateDatabase({ connectionString, schemaName: testDb.schema });
+    const database = createDatabase({
+      connectionString,
+      schemaName: testDb.schema,
+    });
+    testDb.cleanupWith(() => database.close());
+    const store = createMatchStore({ database });
+    const child = spawnActorChild(testDb);
+    const initial = createFixtureMatch();
+    const boot = await child.request<{ backendPid: number }>('boot', {
+      schemaName: testDb.schema,
+      state: initial,
+    });
+    await expect(
+      acquireOwner({
+        connectionString,
+        schemaName: testDb.schema,
+        ownerId: randomUUID(),
+      }),
+    ).rejects.toMatchObject({ code: 'CONFLICT' });
+    const original = (await store.readCommitted(initial.matchId))!;
+    expect(original.state.phase).toBe('PREPARING_ROUND');
+    await child.request('fault', { point: 'before_commit', action: 'pause' });
+    const descriptor = createRoundDescriptor(initial);
+    const oldWrite = settle(
+      child.request('trusted', {
+        command: { type: 'round.prepare', descriptor },
+      }),
+    );
+    await child.reached('before_commit');
+    await testDb.pool.query('SELECT pg_terminate_backend($1, 1000)', [
+      boot.backendPid,
+    ]);
+    let acquired = false;
+    const takingOver = acquireOwner({
+      connectionString,
+      schemaName: testDb.schema,
+      ownerId: randomUUID(),
+    }).then((owner) => {
+      acquired = true;
+      testDb.cleanupWith(() => owner.release());
+      return owner;
+    });
+    await eventually(async () => {
+      const result = await testDb.pool.query<{ waiting: boolean }>(
+        "SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND wait_event_type = 'Lock' AND query LIKE 'SELECT id FROM owner_control%') AS waiting",
+      );
+      return result.rows[0]?.waiting === true;
+    }, 'new process waiting for the live old process transaction guard');
+    expect(acquired).toBe(false);
+    expect(await store.readCommitted(initial.matchId)).toEqual(original);
+    // This reply requires the original process to remain alive after lease loss.
+    await child.request('release', { point: 'before_commit' });
+    expect((await oldWrite).ok).toBe(false);
+    const owner = await takingOver;
+    expect(owner.token.epoch).toBe(original.owner.epoch + 1n);
+    expect(await store.readCommitted(initial.matchId)).toEqual(original);
+    expect(await store.interruptOrphans(owner)).toBe(1);
+    const recovered = (await store.readCommitted(initial.matchId))!;
+    expect(recovered.state.phase).toBe('ABORTED');
+    expect(recovered.state.interruption?.reason).toBe('SERVER_RESTART');
+    expect(recovered.state.roundNumber).toBe(0);
+    expect(recovered.state.round).toBeNull();
+    expect(recovered.state.countedAttempts).toEqual([]);
+    expect(recovered.state.participants.map((p) => p.score)).toEqual([0, 0]);
+    expect(
+      (
+        await testDb.pool.query(
+          'SELECT 1 FROM match_rounds WHERE match_id = $1',
+          [initial.matchId],
+        )
+      ).rows,
+    ).toEqual([]);
+    expect(child.publications).toEqual([]);
+    await expect(
+      child.request('snapshot', { playerId: initial.participants[0].playerId }),
+    ).rejects.toThrow('Actor child operation failed');
+    await expect(
+      child.request('trusted', {
+        command: { type: 'round.prepare', descriptor },
+      }),
+    ).rejects.toThrow('Actor child operation failed');
+    expect(await store.readCommitted(initial.matchId)).toEqual(recovered);
+  });
+
   it.each(['before_commit', 'after_commit', 'before_publish'] as const)(
     'recovers honestly after SIGKILL at %s of the deciding answer',
     async (point) => {
