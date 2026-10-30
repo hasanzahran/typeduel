@@ -229,7 +229,7 @@ describe('actual transport privacy boundaries', () => {
           answer(matchId, round.roundId, round.canonicalText),
         ),
       ).ack?.status,
-    ).toBe('ATTEMPTS_EXHAUSTED');
+    ).toBe('EXHAUSTED');
     const saved = (await h.store.readCommitted(matchId))!;
     expect(
       saved.state.participants.find((p) => p.playerId === a.playerId)

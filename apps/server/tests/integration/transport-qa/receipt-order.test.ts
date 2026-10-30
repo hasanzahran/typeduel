@@ -7,6 +7,7 @@ import {
   createHarness,
   deferred,
   eventually,
+  ManualClock,
   readyRound,
   settle,
   startMatch,
@@ -21,6 +22,32 @@ afterEach(async () => {
 });
 
 describe('socket ingress order rather than asynchronous processing time', () => {
+  it('drains replaced due timers once at the same tick while retaining nofire and a dispatch bound', () => {
+    const clock = new ManualClock(0);
+    let calls = 0;
+    let cancel = clock.schedule(20, () => {
+      calls += 1;
+    });
+    clock.schedule(10, () => {
+      cancel();
+      cancel = clock.schedule(20, () => {
+        calls += 1;
+      });
+    });
+    clock.set(30);
+    expect(calls).toBe(0);
+    clock.set(30, true);
+    expect(calls).toBe(1);
+    clock.set(30, true);
+    expect(calls).toBe(1);
+    const looping = new ManualClock(0);
+    const rearm = () => {
+      looping.schedule(0, rearm);
+    };
+    rearm();
+    expect(() => looping.set(0, true)).toThrow(/dispatch bound/);
+  });
+
   it('commits exactly one winner for concurrent correct answers', async () => {
     h = await createHarness();
     const a = await h.connect();
