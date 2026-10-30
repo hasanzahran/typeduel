@@ -29,6 +29,18 @@ export const AudioReadySchema = z.strictObject({
   ...identity,
   audioVersion: Id,
 });
+// Reports carry no client timestamp: ingress time and the fixed schedule are authoritative.
+export const AudioCompletedSchema = AudioReadySchema;
+export const AudioFailedSchema = AudioReadySchema.extend({
+  reason: z.enum([
+    'DOWNLOAD_FAILED',
+    'INTEGRITY_FAILED',
+    'DECODE_FAILED',
+    'PLAYBACK_FAILED',
+    'LATE_PLAYBACK',
+    'APP_INACTIVE',
+  ]),
+});
 export const ReplayUsedSchema = z.strictObject({
   ...identity,
   replaySequence: z.union([z.literal(1), z.literal(2)]),
@@ -152,6 +164,7 @@ export const MatchInterruptionSchema = z.strictObject({
   reason: z.enum([
     'DISCONNECT_TIMEOUT',
     'SOURCE_UNAVAILABLE',
+    'AUDIO_UNAVAILABLE',
     'SERVER_RESTART',
   ]),
 });
@@ -383,6 +396,8 @@ export const TransitionBatchSchema = z
     }
   });
 export type AnswerSubmit = z.infer<typeof AnswerSubmitSchema>;
+export type AudioCompleted = z.infer<typeof AudioCompletedSchema>;
+export type AudioFailed = z.infer<typeof AudioFailedSchema>;
 export type AudioReady = z.infer<typeof AudioReadySchema>;
 export type ReplayUsed = z.infer<typeof ReplayUsedSchema>;
 export type CountedAnswerAck = z.infer<typeof CountedAnswerAckSchema>;

@@ -1,0 +1,280 @@
+{
+  "formatVersion": 1,
+  "catalogVersion": "00000000-0000-4000-8000-000000000900",
+  "languageCode": "en-US",
+  "generationConfigHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "entries": [
+    {
+      "wordId": "00000000-0000-4000-8000-000000000001",
+      "canonicalText": "qa-fixture-1",
+      "allowedVariants": [],
+      "difficulty": 1,
+      "editorial": {
+        "status": "approved",
+        "reviewedBy": "TEST ONLY \u2014 not editorial evidence",
+        "reviewedAt": "2026-10-30T00:00:00.000Z"
+      },
+      "asset": {
+        "assetId": "00000000-0000-4000-8000-000000000101",
+        "audioVersion": "00000000-0000-4000-8000-000000000201",
+        "path": "00000000-0000-4000-8000-000000000101/00000000-0000-4000-8000-000000000201.mp3",
+        "byteLength": 33,
+        "sha256": "2fef6bbb5c66d1c87b05c35b3d4d72e28c5a8925d41a0a9989a1497cefc426cc",
+        "clipDurationMs": 1000,
+        "provider": {
+          "name": "amazon-polly",
+          "voiceId": "Joanna",
+          "engine": "neural",
+          "languageCode": "en-US",
+          "region": "us-east-1",
+          "outputFormat": "mp3",
+          "sampleRateHz": 24000
+        },
+        "listening": {
+          "status": "approved",
+          "reviewedBy": "TEST ONLY \u2014 not editorial evidence",
+          "reviewedAt": "2026-10-30T00:00:00.000Z",
+          "sha256": "2fef6bbb5c66d1c87b05c35b3d4d72e28c5a8925d41a0a9989a1497cefc426cc"
+        }
+      }
+    },
+    {
+      "wordId": "00000000-0000-4000-8000-000000000002",
+      "canonicalText": "qa-fixture-2",
+      "allowedVariants": [],
+      "difficulty": 1,
+      "editorial": {
+        "status": "approved",
+        "reviewedBy": "TEST ONLY \u2014 not editorial evidence",
+        "reviewedAt": "2026-10-30T00:00:00.000Z"
+      },
+      "asset": {
+        "assetId": "00000000-0000-4000-8000-000000000102",
+        "audioVersion": "00000000-0000-4000-8000-000000000202",
+        "path": "00000000-0000-4000-8000-000000000102/00000000-0000-4000-8000-000000000202.mp3",
+        "byteLength": 33,
+        "sha256": "c49347bf04d534f893b352ae5a4ae54a8e36a676738cde12829afbd80a07e19e",
+        "clipDurationMs": 1000,
+        "provider": {
+          "name": "amazon-polly",
+          "voiceId": "Joanna",
+          "engine": "neural",
+          "languageCode": "en-US",
+          "region": "us-east-1",
+          "outputFormat": "mp3",
+          "sampleRateHz": 24000
+        },
+        "listening": {
+          "status": "approved",
+          "reviewedBy": "TEST ONLY \u2014 not editorial evidence",
+          "reviewedAt": "2026-10-30T00:00:00.000Z",
+          "sha256": "c49347bf04d534f893b352ae5a4ae54a8e36a676738cde12829afbd80a07e19e"
+        }
+      }
+    },
+    {
+      "wordId": "00000000-0000-4000-8000-000000000003",
+      "canonicalText": "qa-fixture-3",
+      "allowedVariants": [],
+      "difficulty": 1,
+      "editorial": {
+        "status": "approved",
+        "reviewedBy": "TEST ONLY \u2014 not editorial evidence",
+        "reviewedAt": "2026-10-30T00:00:00.000Z"
+      },
+      "asset": {
+        "assetId": "00000000-0000-4000-8000-000000000103",
+        "audioVersion": "00000000-0000-4000-8000-000000000203",
+        "path": "00000000-0000-4000-8000-000000000103/00000000-0000-4000-8000-000000000203.mp3",
+        "byteLength": 33,
+        "sha256": "dbe5b30dea850ef67cb78246fda7839d55d47802da21798be2b21daff929d79b",
+        "clipDurationMs": 1000,
+        "provider": {
+          "name": "amazon-polly",
+          "voiceId": "Joanna",
+          "engine": "neural",
+          "languageCode": "en-US",
+          "region": "us-east-1",
+          "outputFormat": "mp3",
+          "sampleRateHz": 24000
+        },
+        "listening": {
+          "status": "approved",
+          "reviewedBy": "TEST ONLY \u2014 not editorial evidence",
+          "reviewedAt": "2026-10-30T00:00:00.000Z",
+          "sha256": "dbe5b30dea850ef67cb78246fda7839d55d47802da21798be2b21daff929d79b"
+        }
+      }
+    },
+    {
+      "wordId": "00000000-0000-4000-8000-000000000004",
+      "canonicalText": "qa-fixture-4",
+      "allowedVariants": [],
+      "difficulty": 1,
+      "editorial": {
+        "status": "approved",
+        "reviewedBy": "TEST ONLY \u2014 not editorial evidence",
+        "reviewedAt": "2026-10-30T00:00:00.000Z"
+      },
+      "asset": {
+        "assetId": "00000000-0000-4000-8000-000000000104",
+        "audioVersion": "00000000-0000-4000-8000-000000000204",
+        "path": "00000000-0000-4000-8000-000000000104/00000000-0000-4000-8000-000000000204.mp3",
+        "byteLength": 33,
+        "sha256": "f0e837dec54a7fa2e20c4eab278c427d4c4ad1e2ea87c02aef9e08d4c9834c25",
+        "clipDurationMs": 1000,
+        "provider": {
+          "name": "amazon-polly",
+          "voiceId": "Joanna",
+          "engine": "neural",
+          "languageCode": "en-US",
+          "region": "us-east-1",
+          "outputFormat": "mp3",
+          "sampleRateHz": 24000
+        },
+        "listening": {
+          "status": "approved",
+          "reviewedBy": "TEST ONLY \u2014 not editorial evidence",
+          "reviewedAt": "2026-10-30T00:00:00.000Z",
+          "sha256": "f0e837dec54a7fa2e20c4eab278c427d4c4ad1e2ea87c02aef9e08d4c9834c25"
+        }
+      }
+    },
+    {
+      "wordId": "00000000-0000-4000-8000-000000000005",
+      "canonicalText": "qa-fixture-5",
+      "allowedVariants": [],
+      "difficulty": 1,
+      "editorial": {
+        "status": "approved",
+        "reviewedBy": "TEST ONLY \u2014 not editorial evidence",
+        "reviewedAt": "2026-10-30T00:00:00.000Z"
+      },
+      "asset": {
+        "assetId": "00000000-0000-4000-8000-000000000105",
+        "audioVersion": "00000000-0000-4000-8000-000000000205",
+        "path": "00000000-0000-4000-8000-000000000105/00000000-0000-4000-8000-000000000205.mp3",
+        "byteLength": 33,
+        "sha256": "df1d09d49ab5e85d17f6df9a36399ea7cd5cd15e80b1949a7770a34df5cea541",
+        "clipDurationMs": 1000,
+        "provider": {
+          "name": "amazon-polly",
+          "voiceId": "Joanna",
+          "engine": "neural",
+          "languageCode": "en-US",
+          "region": "us-east-1",
+          "outputFormat": "mp3",
+          "sampleRateHz": 24000
+        },
+        "listening": {
+          "status": "approved",
+          "reviewedBy": "TEST ONLY \u2014 not editorial evidence",
+          "reviewedAt": "2026-10-30T00:00:00.000Z",
+          "sha256": "df1d09d49ab5e85d17f6df9a36399ea7cd5cd15e80b1949a7770a34df5cea541"
+        }
+      }
+    },
+    {
+      "wordId": "00000000-0000-4000-8000-000000000006",
+      "canonicalText": "qa-fixture-6",
+      "allowedVariants": [],
+      "difficulty": 1,
+      "editorial": {
+        "status": "approved",
+        "reviewedBy": "TEST ONLY \u2014 not editorial evidence",
+        "reviewedAt": "2026-10-30T00:00:00.000Z"
+      },
+      "asset": {
+        "assetId": "00000000-0000-4000-8000-000000000106",
+        "audioVersion": "00000000-0000-4000-8000-000000000206",
+        "path": "00000000-0000-4000-8000-000000000106/00000000-0000-4000-8000-000000000206.mp3",
+        "byteLength": 33,
+        "sha256": "dc2ef5c341178ed3c80c0754c4e087f5e8940b0b395d27f0982f948d23bf97c7",
+        "clipDurationMs": 1000,
+        "provider": {
+          "name": "amazon-polly",
+          "voiceId": "Joanna",
+          "engine": "neural",
+          "languageCode": "en-US",
+          "region": "us-east-1",
+          "outputFormat": "mp3",
+          "sampleRateHz": 24000
+        },
+        "listening": {
+          "status": "approved",
+          "reviewedBy": "TEST ONLY \u2014 not editorial evidence",
+          "reviewedAt": "2026-10-30T00:00:00.000Z",
+          "sha256": "dc2ef5c341178ed3c80c0754c4e087f5e8940b0b395d27f0982f948d23bf97c7"
+        }
+      }
+    },
+    {
+      "wordId": "00000000-0000-4000-8000-000000000007",
+      "canonicalText": "qa-fixture-7",
+      "allowedVariants": [],
+      "difficulty": 1,
+      "editorial": {
+        "status": "approved",
+        "reviewedBy": "TEST ONLY \u2014 not editorial evidence",
+        "reviewedAt": "2026-10-30T00:00:00.000Z"
+      },
+      "asset": {
+        "assetId": "00000000-0000-4000-8000-000000000107",
+        "audioVersion": "00000000-0000-4000-8000-000000000207",
+        "path": "00000000-0000-4000-8000-000000000107/00000000-0000-4000-8000-000000000207.mp3",
+        "byteLength": 33,
+        "sha256": "4ed00c3215381b41e7cc583ba3ce4da41d5da985092bf273fb21fd127e21d413",
+        "clipDurationMs": 1000,
+        "provider": {
+          "name": "amazon-polly",
+          "voiceId": "Joanna",
+          "engine": "neural",
+          "languageCode": "en-US",
+          "region": "us-east-1",
+          "outputFormat": "mp3",
+          "sampleRateHz": 24000
+        },
+        "listening": {
+          "status": "approved",
+          "reviewedBy": "TEST ONLY \u2014 not editorial evidence",
+          "reviewedAt": "2026-10-30T00:00:00.000Z",
+          "sha256": "4ed00c3215381b41e7cc583ba3ce4da41d5da985092bf273fb21fd127e21d413"
+        }
+      }
+    },
+    {
+      "wordId": "00000000-0000-4000-8000-000000000008",
+      "canonicalText": "qa-fixture-8",
+      "allowedVariants": [],
+      "difficulty": 1,
+      "editorial": {
+        "status": "approved",
+        "reviewedBy": "TEST ONLY \u2014 not editorial evidence",
+        "reviewedAt": "2026-10-30T00:00:00.000Z"
+      },
+      "asset": {
+        "assetId": "00000000-0000-4000-8000-000000000108",
+        "audioVersion": "00000000-0000-4000-8000-000000000208",
+        "path": "00000000-0000-4000-8000-000000000108/00000000-0000-4000-8000-000000000208.mp3",
+        "byteLength": 33,
+        "sha256": "d39c4d5b2c8583e68b75411f3ed3e5e3fe85bf614d337b412af26b9947384f46",
+        "clipDurationMs": 1000,
+        "provider": {
+          "name": "amazon-polly",
+          "voiceId": "Joanna",
+          "engine": "neural",
+          "languageCode": "en-US",
+          "region": "us-east-1",
+          "outputFormat": "mp3",
+          "sampleRateHz": 24000
+        },
+        "listening": {
+          "status": "approved",
+          "reviewedBy": "TEST ONLY \u2014 not editorial evidence",
+          "reviewedAt": "2026-10-30T00:00:00.000Z",
+          "sha256": "d39c4d5b2c8583e68b75411f3ed3e5e3fe85bf614d337b412af26b9947384f46"
+        }
+      }
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import { z } from 'zod';
 export * from './setup.js';
 export * from './gameplay.js';
 export * from './realtime.js';
+export * from './audio.js';
 export const HealthSchema = z.strictObject({
   status: z.literal('ok'),
   service: z.literal('typeduel-api'),

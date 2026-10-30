@@ -32,7 +32,10 @@
     "react-native-safe-area-context": "5.10.1",
     "react-native-screens": "4.30.0",
     "zod": "4.6.7",
-    "socket.io-client": "4.8.4"
+    "socket.io-client": "4.8.4",
+    "expo-audio": "58.0.10",
+    "expo-file-system": "58.0.13",
+    "expo-crypto": "58.0.7"
   },
   "devDependencies": {
     "@typeduel/config": "workspace:*",
