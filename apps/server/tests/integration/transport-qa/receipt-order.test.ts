@@ -21,6 +21,95 @@ afterEach(async () => {
 });
 
 describe('socket ingress order rather than asynchronous processing time', () => {
+  it('commits exactly one winner for concurrent correct answers', async () => {
+    h = await createHarness();
+    const a = await h.connect();
+    const b = await h.connect();
+    const matchId = await startMatch(h, a, b);
+    const { round } = await readyRound(h, a, b, matchId);
+    const results = await Promise.all(
+      [a, b].map((peer) =>
+        peer.request<GameplayReplyData>(
+          'answer.submit',
+          answer(matchId, round.roundId, round.canonicalText),
+        ),
+      ),
+    );
+    expect(results.map((result) => success(result).ack?.status).sort()).toEqual(
+      ['CORRECT', 'ROUND_CLOSED'],
+    );
+    const saved = (await h.store.readCommitted(matchId))!;
+    expect(saved.state.countedAttempts).toHaveLength(1);
+    expect(saved.state.participants.reduce((sum, p) => sum + p.score, 0)).toBe(
+      1,
+    );
+    expect(saved.state.lastResult?.winnerId).toBe(
+      saved.state.countedAttempts[0]!.playerId,
+    );
+  });
+
+  it.each(['rolled_back', 'unknown'] as const)(
+    'publishes no unconfirmed point while a %s head blocks later real frames',
+    async (kind) => {
+      h = await createHarness();
+      const a = await h.connect();
+      const b = await h.connect();
+      const matchId = await startMatch(h, a, b);
+      const { round } = await readyRound(h, a, b, matchId);
+      const paused = deferred<void>();
+      let attempts = 0;
+      let unknown = false;
+      const beforePackets = h.packets.length;
+      h.setFault((point, context) => {
+        if (context.matchId !== matchId) return;
+        if (kind === 'rolled_back' && point === 'before_commit') {
+          if (++attempts === 3) paused.resolve();
+          throw new Error('qa-private-rollback');
+        }
+        if (kind === 'unknown' && point === 'after_commit') {
+          unknown = true;
+          throw new Error('qa-private-lost-commit-response');
+        }
+        if (unknown && point === 'before_owner_lock') {
+          paused.resolve();
+          throw new Error('qa-private-resolution-unavailable');
+        }
+      });
+      const first = a.request<GameplayReplyData>(
+        'answer.submit',
+        answer(matchId, round.roundId, round.canonicalText),
+      );
+      await paused.promise;
+      const queued = deferred<void>();
+      const later = answer(matchId, round.roundId, round.canonicalText);
+      h.setAdmissionObserver((event) => {
+        if (event.attemptId === later.attemptId) queued.resolve();
+      });
+      const second = b.request<GameplayReplyData>('answer.submit', later);
+      await queued.promise;
+      const durable = (await h.store.readCommitted(matchId))!;
+      expect(durable.state.countedAttempts).toHaveLength(
+        kind === 'unknown' ? 1 : 0,
+      );
+      expect(
+        h.packets
+          .slice(beforePackets)
+          .filter(
+            (packet) =>
+              packet.event === 'match.update' ||
+              packet.event === 'answer.submit',
+          ),
+      ).toEqual([]);
+      h.setFault(() => {});
+      await h.runtime.reconcile();
+      expect(success(await first).ack?.status).toBe('CORRECT');
+      expect(success(await second).ack?.status).toBe('ROUND_CLOSED');
+      const confirmed = (await h.store.readCommitted(matchId))!;
+      expect(confirmed.state.countedAttempts).toHaveLength(1);
+      expect(confirmed.state.participants.map((p) => p.score)).toEqual([1, 0]);
+    },
+  );
+
   it('keeps a timely queued answer ahead of the deadline while another transaction is stalled', async () => {
     h = await createHarness();
     const a = await h.connect();
