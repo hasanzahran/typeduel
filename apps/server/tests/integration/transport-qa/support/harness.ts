@@ -444,7 +444,7 @@ export async function waitMatch(peer: Peer, eventsFrom = 0) {
   return state.admission.update;
 }
 export async function startMatch(
-  h: Pick<Harness, 'http'>,
+  h: Pick<Harness, 'http' | 'clock' | 'advance'>,
   a: Peer,
   b: Peer,
   setup: MatchSetup = DEFAULT_SETUP,
@@ -457,6 +457,8 @@ export async function startMatch(
   const other = await waitMatch(b, bFrom);
   if (match.matchId !== other.matchId)
     throw new Error('Players admitted to different matches');
+  // Manual clocks require an explicit tick for the initial zero-delay source job.
+  await h.advance(h.clock.monoNow());
   return match.matchId;
 }
 export async function readyRound(
