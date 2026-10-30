@@ -422,9 +422,12 @@ export async function readyLobby(a: Peer, b: Peer, lobbyId: string) {
   success(await mutate(a, 'lobby.ready', { lobbyId, ready: true }));
   return mutate(b, 'lobby.ready', { lobbyId, ready: true });
 }
-export async function waitMatch(peer: Peer) {
+export async function waitMatch(peer: Peer, eventsFrom = 0) {
   await eventually(
-    async () => peer.events.some((event) => event.event === 'match.found'),
+    async () =>
+      peer.events
+        .slice(eventsFrom)
+        .some((event) => event.event === 'match.found'),
     'committed match discovery event',
   );
   const state = await peer.sync();
@@ -439,9 +442,11 @@ export async function startMatch(
   setup: MatchSetup = DEFAULT_SETUP,
 ) {
   const lobby = await privateLobby(h, a, b, setup);
+  const aFrom = a.events.length;
+  const bFrom = b.events.length;
   success(await readyLobby(a, b, lobby.lobbyId));
-  const match = await waitMatch(a);
-  const other = await waitMatch(b);
+  const match = await waitMatch(a, aFrom);
+  const other = await waitMatch(b, bFrom);
   if (match.matchId !== other.matchId)
     throw new Error('Players admitted to different matches');
   return match.matchId;
