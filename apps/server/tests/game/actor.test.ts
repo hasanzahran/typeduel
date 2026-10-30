@@ -362,3 +362,31 @@ describe('initial lifecycle bootstrap', () => {
     expect(h.store.commitTransition).not.toHaveBeenCalled();
   });
 });
+
+it('reserves final disconnect capacity and rejects a replacement pair before overflow', async () => {
+  const h = harness();
+  const held = deferred();
+  h.store.commitTransition = vi.fn(async (input) => {
+    await held.promise;
+    return h.save(input);
+  });
+  const actor = h.actor({ maxQueueLength: 6 });
+  const playerId = h.record.state.participants[0].playerId;
+  const requests = Array.from({ length: 4 }, () =>
+    actor.acceptPlayerCommand({ playerId }, h.packet('wrong')),
+  );
+  expect(actor.canAcceptReplacement()).toBe(false);
+  await expect(actor.replaceConnection(playerId)).rejects.toMatchObject({
+    code: 'UNAVAILABLE',
+  });
+  const disconnects = h.record.state.participants.map((p) =>
+    actor.acceptTrustedCommand({
+      type: 'player.disconnect',
+      playerId: p.playerId,
+    }),
+  );
+  held.release();
+  await Promise.all([...requests, ...disconnects]);
+  expect(h.record.state.participants.every((p) => !p.connected)).toBe(true);
+  actor.close();
+});

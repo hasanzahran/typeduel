@@ -334,8 +334,28 @@ export function createMatchActor(options: {
     isIdle: () => queue.length === 0 && running === null,
     canAcceptReconnect: () =>
       !closed &&
-      !paused &&
       (bootstrapping || queue.length < Math.max(1, maxQueueLength - 2)),
+    canAcceptReplacement: () =>
+      !closed && maxQueueLength >= 4 && queue.length <= maxQueueLength - 4,
+    replaceConnection(playerId: string): Promise<ActorResult> {
+      if (closed || maxQueueLength < 4 || queue.length > maxQueueLength - 4)
+        return Promise.reject(new StoreError('UNAVAILABLE'));
+      const at = clock.monoNow();
+      const disconnected = enqueue(
+        { type: 'player.disconnect', playerId },
+        at,
+        false,
+      );
+      const reconnected = enqueue(
+        { type: 'player.reconnect', playerId },
+        at,
+        false,
+      );
+      run();
+      return Promise.all([disconnected, reconnected]).then(
+        (results) => results[1]!,
+      );
+    },
     acceptPlayerCommand(
       principal: { playerId: string },
       raw: unknown,

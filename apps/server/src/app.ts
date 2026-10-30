@@ -8,11 +8,14 @@ export function buildApp(logLevel: string = 'silent') {
         ? false
         : {
             level: logLevel,
-            redact: ['req.headers.authorization', 'req.headers.cookie'],
+            redact: [
+              'req.headers.authorization',
+              'req.headers.cookie',
+              'req.headers.x-typeduel-session-id',
+            ],
             serializers: {
               req: (req) => ({
                 method: req.method,
-                url: req.url.split('?')[0] ?? '/',
               }),
             },
           },
