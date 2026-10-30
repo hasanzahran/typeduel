@@ -1,6 +1,6 @@
 # M1 increment 01 — gameplay contracts and deterministic server core
 
-**Status:** Increment 01 implementation approved by the owner, including reconciled contracts and coordinated ownership. Shared contracts frozen for implementation; acceptance checks pending.
+**Status:** Implemented and locally verified; ready for final CI verification and owner review. Increment 02 remains unapproved.
 
 **Date:** October 29, 2026.
 
@@ -20,7 +20,7 @@ The engine computes authoritative deadlines and due transitions. A future actor 
 
 ## 2. Exact file scope after approval
 
-Paths are relative to the repository root. New files below do not exist yet.
+Paths are relative to the repository root. All listed implementation and test files are now present.
 
 | File                                         | Action                      | Responsibility                                                                                                                                  |
 | -------------------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -113,7 +113,7 @@ Reconnect strictly before grace expiry clears the pending disconnect and permits
 
 Terminal outcomes stay terminal: an already legitimately completed match is not retroactively rewritten by a later grace callback. No win may be awarded _because_ someone disconnected. Repeated interruption/expiry commands are idempotent; reconnect cannot resume an aborted match. These are development semantics; future production forfeits require review.
 
-## 9. Tests and proposed acceptance criteria
+## 9. Tests and acceptance criteria
 
 | Test area              | Required scenarios                                                                                                                                                                                                                                                |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -181,3 +181,53 @@ The owner approved implementation after the coordinated backend/mobile/QA/conten
 - The core interface uses explicit monotonic receipts with strictly increasing ingress sequence and a fixed monotonic/UTC anchor. Invalid inputs fail with static sanitized errors. Prior state, fixtures and returned projections must not alias mutable state.
 
 Contract review added checks for mode-specific progression, per-round history bounds, legal atomic event combinations and possible sudden-death scores. Full acceptance must replay all 48 counted attempts after an eight-round draw, preserving original ACKs without loss.
+
+## 13. Parallel mobile/content preparation (no implementation)
+
+The mobile specialist reviewed the frozen schemas and mapped the existing presentation to canonical phases: preparation/preload → countdown → listening → typing → closed round feedback → complete or interrupted. Pending submission, reconnect and audio failure are local overlays, not client-authoritative game phases. Preserve the existing charcoal/teal hierarchy and keyboard-visible timer/composer.
+
+Later mobile/transport requirements:
+
+- Validate/apply each transition batch atomically, scoped to an authenticated match. Empty batches are not self-contained UI state updates; provide viewer snapshots or equivalent authoritative updates at the corresponding version. Snapshot application must not accidentally suppress an unprocessed result presentation effect.
+- Request canonical sync on unexplained version gaps. Correlate ACKs independently of state version filtering; an older ACK cannot restore attempts, overwrite a counted outcome, reopen a round or clear another pending request. Retry only unresolved submissions with their original ID and exact text.
+- Restore counters, closed results and counted history from snapshots; reconnect never restarts original playback or grants time. Preserve locally spent replay sequences conservatively. Restart recovery, failed-play accounting and playback overlap require an Increment 04 decision.
+- Increment 04 needs a bounded mobile audio adapter/harness for measured playback before Increment 05 full screen wiring. Record iOS↔Android and same-platform device/build/OS/IME evidence, start/end skew, audio-route/interruption failures, poor network/ACK loss, large text, VoiceOver/TalkBack, switch/hardware input and actual keyboard assistance. M0 evidence does not establish M1 behavior.
+- Evaluate competitive input early; native assistance limitations and accessible custom keyboard alternatives remain an M1 gate. No keyboard implementation is authorized here.
+
+The content specialist found no approved playable catalog, audio assets or license inventory in repository source. Prepare private records for vocabulary provenance/rights, editorial word/variant/category/level approval, immutable asset/voice/configuration identity, final-byte SHA-256, measured decoded duration and human listening review. Do not treat candidate suggestions or synthetic engine fixtures as approved content.
+
+Content workflow: provenance review → spelling/category/level and ambiguity review → separately authorized offline generation → byte integrity/duration/metadata checks → human listening approval → coverage gate → backend admission. Inspect MP3 tags, object paths, headers and errors for spelling leaks. Asset replacement requires a new version and renewed approval; unchanged audio can survive separately reviewed category edits.
+
+- First restricted General/Classic/Level-1 device match: eight distinct approved word/audio pairs.
+- Full M1: eight eligible candidates per reachable enabled category/level, including Challenge through Level 5; no silent category fallback.
+- Beta: the existing launch gate is 30 approved playable words per named category/level, or 600 category-level memberships. Shared category membership can reuse a recording; General derives from the complete approved pool.
+
+Future ownership: content receives explicitly assigned editorial/audio tools and private manifests; backend owns persistence, selection, coverage enforcement and authorized delivery; mobile owns decode/playback/native measurements; lead owns public contracts, dependency changes and canonical integration. Missing reviewed assets, licensing/review turnaround, keyboard fairness and device access remain beta schedule risks. No paid generation, storage provisioning or next-increment implementation is part of this preparation.
+
+## 14. Increment 01 verification — October 29, 2026
+
+All three approved implementation stages are complete: strict shared contracts, deterministic server core, and independent adversarial/privacy acceptance. Backend and QA worked on isolated branches/worktrees; the lead integrated contracts, engine, then QA tests. The final candidate code was validated in a clean detached worktree to exclude the owner's untracked agent setup package. No package manifest, lockfile, security policy, UI, HTTP route or CI workflow changed.
+
+| Check                                | Actual result                                                                                                                                     |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pinned runtime                       | Node 24.13.0; pnpm 12.15.0                                                                                                                        |
+| `pnpm install --frozen-lockfile`     | Passed; lockfile and dependency policy unchanged. Initial isolated installs reused 918 cached packages with zero downloads.                       |
+| `pnpm check` — formatting/lint/types | Passed, including import boundaries and design-token consistency.                                                                                 |
+| Contract tests                       | 15 passed: 5 existing M0 plus 10 gameplay validation tests.                                                                                       |
+| Server tests                         | 61 passed: 4 existing API, 34 backend core, 23 independent QA tests.                                                                              |
+| Mobile regression tests              | 8 passed; no mobile application changes.                                                                                                          |
+| Total automated tests                | 84 passed across 8 test files/suites.                                                                                                             |
+| Builds/exports                       | Contracts and server TypeScript builds passed; web/iOS/Android production exports passed.                                                         |
+| Production isolation                 | Existing release fixture check passed; supplementary scan of all 10 exported JS/Hermes bundles found none of the checked M0/M1 fixture sentinels. |
+| `pnpm expo:check`                    | Dependencies up to date; Expo Doctor 20/20 passed.                                                                                                |
+| Whitespace/scope                     | `git diff --check` passed; manifests, lockfile, workspace policies and mobile files unchanged.                                                    |
+| GitHub CI                            | Required at the final pushed review head; remote run and PR evidence are reported in the review handoff after push, rather than pre-marked here.  |
+| Native gameplay                      | Not exercised: this increment has no socket, audio or mobile gameplay integration. Exports do not establish native execution or accessibility.    |
+
+The independent QA run demonstrates the complete history bound: eight scoreless rounds × two players × three submissions retain 48 counted outcomes; each viewer sees only their 24. Every original retry after terminal completion returns its exact original acknowledgement without eviction, new scoring, counter changes or duplicate events. Changed payloads conflict. Mixed-match histories remain isolated. Other accepted traces cover equal-time receipt order, input/deadline boundaries, chronological delayed wakes, 9,999/10,000 ms reconnect, staggered disconnects, completion/grace collisions, immutable terminal states and detached projections. Canonical spelling appears only after that round closes; aborting an unclosed round does not reveal it.
+
+Review caught and resolved contract validation gaps for Challenge/score consistency, impossible sudden-death scores, invalid per-round histories, contradictory event batches and points assigned to an unclosed round. Backend checks also cover safe integer schedule/grace arithmetic. No engine blocker was found by independent QA. Final review added the missing cross-round stale-readiness trace: old readiness cannot change the new preparation; fresh acknowledgements schedule once and duplicates preserve that schedule.
+
+Remaining boundaries are deliberate: the future authenticated actor must preserve ingress order, persist state/attempt history/results atomically before publication, route candidate events only to authorized match participants, and never serialize private `TransitionResult.state`. Database crash/restart behavior, real socket/network recovery, content selection/delivery, audio synchronization and competitive keyboard fairness remain later reviewed increments. Mobile/content preparation is recorded above; no reviewed playable audio set currently exists.
+
+Owner review is the next gate. Do not automatically merge into main or begin Increment 02. The accepted M0 Gboard limitation remains an M1 acceptance requirement; no custom keyboard or visual changes were implemented.

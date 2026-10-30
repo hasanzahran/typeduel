@@ -2,7 +2,7 @@
 
 **Date:** October 29, 2026
 
-**Status:** M0 formally accepted by the owner; PR #2 merged. M1 architecture and staged scope approved; increment 01 implementation is owner-approved and in progress; acceptance remains pending.
+**Status:** M0 formally accepted by the owner; PR #2 merged. M1 architecture and staged scope approved; increment 01 is implemented with 84 passing local tests and successful Expo/build/export checks; final CI verification and owner review remain the handoff gate.
 
 **Sources of truth:** TypeDuel PRD v0.4, System Design v1.2, UI/UX Design v1.0, plus the owner-approved M1 scope and development reconnect policy recorded below.
 
@@ -121,9 +121,9 @@ Deliverables: real iOS/Android builds via Expo EAS, cross-platform two-phone smo
 
 Acceptance: zero inconsistent completed-match scores; all three gameplay restrictions exercised; sound and timer correct; app policies/privacy/account deletion met; product owner approves before any production publish.
 
-## Immediate next action — implement and verify increment 01
+## Immediate next action — review completed increment 01
 
-Review [M1_INCREMENT_01_PLAN.md](M1_INCREMENT_01_PLAN.md): exact files, zero-new-dependency approach, deterministic command/time semantics, contract privacy, acceptance tests and commit checkpoints. The owner has approved the reconciled contract freeze, isolated backend/QA worktrees and all three Increment 01 implementation commits. Run full acceptance at the integrated head and stop before Increment 02. No new dependencies, services, UI changes or automatic main merge are authorized.
+Review [M1_INCREMENT_01_PLAN.md](M1_INCREMENT_01_PLAN.md): exact files, zero-new-dependency approach, deterministic command/time semantics, contract privacy, acceptance tests and commit checkpoints. The approved contracts, deterministic engine and independent QA tests are implemented. All 84 local tests, quality checks, Expo Doctor (20/20), frozen installation and production exports passed; see the increment verification section for evidence and limitations. Verify CI at the final pushed head and obtain owner review before Increment 02. No new dependencies, services, UI changes or automatic main merge are authorized.
 
 ## Useful official documentation
 

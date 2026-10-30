@@ -253,6 +253,11 @@ export const MatchSnapshotSchema = z
         fail('Invalid per-round history');
     }
     if ('round' in s) {
+      if (
+        s.round !== null &&
+        s.participants[0].score + s.participants[1].score >= s.roundNumber
+      )
+        fail('Unclosed round cannot have an awarded point');
       if (s.round === null) {
         if (s.roundNumber !== 0)
           fail('Only an initial preparation can omit the round');

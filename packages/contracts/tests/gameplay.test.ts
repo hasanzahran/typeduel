@@ -303,6 +303,14 @@ describe('strict gameplay contracts', () => {
         }).success,
       ).toBe(false);
   });
+  it('rejects points already awarded to an unclosed first round', () => {
+    expect(
+      MatchSnapshotSchema.safeParse({
+        ...snapshot,
+        participants: [{ ...participants[0], score: 1 }, participants[1]],
+      }).success,
+    ).toBe(false);
+  });
   it('requires a member winner, score consistency and an eight-round draw', () => {
     expect(MatchCompletionSchema.safeParse(completion).success).toBe(true);
     for (const patch of [
