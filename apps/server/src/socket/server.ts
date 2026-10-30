@@ -17,7 +17,7 @@ import type { GameSession, Sessions } from './session.js';
 import type { ActorClock } from '../game/clock.js';
 import type { RuntimeHooks } from '../runtime.js';
 import { createLimits, TransportFailure } from './limits.js';
-import { errorCode, parse } from './handlers.js';
+import { controlRequestId, errorCode, parse } from './handlers.js';
 export function attachGameSocket(
   app: FastifyInstance,
   options: {
@@ -132,7 +132,10 @@ export function attachGameSocket(
         } catch {
           (callback as (value: unknown) => void)({
             ok: false,
-            error: { code: 'SERVER_UNAVAILABLE', requestId: null },
+            error: {
+              code: 'SERVER_UNAVAILABLE',
+              requestId: controlRequestId(event, args[0]),
+            },
           });
         }
       });

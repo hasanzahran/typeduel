@@ -181,6 +181,10 @@ export function createRegistry(options: {
         entry.unknown = error.code === 'COMMIT_UNKNOWN';
         return;
       }
+      // A confirmed match cannot be released merely because bootstrap failed.
+      // Keep its reservation until owner recovery; never create a replacement.
+      if (entry.record) return;
+      entries.delete(entry.state.matchId);
       entry.reject(
         new TransportFailure(
           error instanceof StoreError && error.code === 'CONFLICT'
@@ -308,6 +312,8 @@ export function createRegistry(options: {
       assert();
       const e = entries.get(matchId);
       if (e) {
+        if (!e.state.participants.some((p) => p.playerId === playerId))
+          throw new TransportFailure('UNAUTHORIZED');
         if (!e.ready || !e.actor)
           throw new TransportFailure('STORAGE_UNAVAILABLE');
         await e.actor.wake();
@@ -347,6 +353,8 @@ export function createRegistry(options: {
       assert();
       const e = entries.get(matchId);
       if (e) {
+        if (!e.state.participants.some((p) => p.playerId === playerId))
+          throw new TransportFailure('UNAUTHORIZED');
         if (!e.ready || !e.actor)
           throw new TransportFailure('STORAGE_UNAVAILABLE');
         return e.actor.acceptPlayerCommand({ playerId }, { type, payload });
@@ -384,6 +392,10 @@ export function createRegistry(options: {
         [...entries.values()].map(async (e) => {
           if (e.actor) {
             await e.actor.reconcile();
+            if (e.active)
+              e.lifecycle?.observe(
+                snapshot(e.actor, e.state.participants[0].playerId),
+              );
             if (
               e.ready &&
               e.actor.isIdle() &&

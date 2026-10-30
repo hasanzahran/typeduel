@@ -56,3 +56,35 @@ it('requires current authenticated session and freezes private setup through pre
     await h.close();
   }
 });
+
+it('expires an invite by receipt time even when its timer callback is delayed', async () => {
+  const h = await testRuntime();
+  try {
+    const a = await h.connect();
+    const s = await sync(a.socket);
+    const headers = {
+      authorization: `Bearer ${a.playerId}`,
+      'x-typeduel-session-id': s.sessionId,
+    };
+    const created = await h.runtime.app.inject({
+      method: 'POST',
+      url: '/v1/rooms',
+      headers,
+      payload: {
+        requestId: randomUUID(),
+        expectedAdmissionRevision: s.admissionRevision,
+        setup: { mode: 'classic', categorySlug: 'general', difficulty: 1 },
+      },
+    });
+    const code = created.json().data.admission.lobby.inviteCode;
+    h.setNow(601000);
+    const preview = await h.runtime.app.inject({
+      url: `/v1/rooms/${code}?requestId=${randomUUID()}`,
+      headers,
+    });
+    expect(preview.statusCode).toBe(404);
+    expect((await sync(a.socket)).admission.kind).toBe('idle');
+  } finally {
+    await h.close();
+  }
+});

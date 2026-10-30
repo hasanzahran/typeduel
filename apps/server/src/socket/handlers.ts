@@ -25,6 +25,21 @@ export function parse<T extends z.ZodType>(
   if (!result.success) throw new TransportFailure('INVALID_REQUEST');
   return result.data;
 }
+/** Only validated control IDs are echoed, including admission rejections. */
+export function controlRequestId(event: string, raw: unknown): string | null {
+  if (
+    ['answer.submit', 'round.audio_ready', 'round.replay_used'].includes(event)
+  )
+    return null;
+  try {
+    if (typeof raw !== 'object' || raw === null || !('requestId' in raw))
+      return null;
+    const parsed = z.uuid().safeParse(raw.requestId);
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
 export function createHandlers(options: {
   sessions: Sessions;
   coordinator: Coordinator;
@@ -39,7 +54,7 @@ export function createHandlers(options: {
     event: string,
     raw: unknown,
   ): Promise<Reply<unknown>> => {
-    let requestId: string | null = null;
+    const requestId = controlRequestId(event, raw);
     try {
       sessions.assert(session);
       if (!limits.allow(session.principal.playerId))
@@ -66,13 +81,6 @@ export function createHandlers(options: {
         sessions.assert(session);
         return { ok: true, data };
       }
-      if (
-        typeof raw === 'object' &&
-        raw !== null &&
-        'requestId' in raw &&
-        z.uuid().safeParse(raw.requestId).success
-      )
-        requestId = raw.requestId as string;
       let data: unknown;
       switch (event) {
         case 'session.sync':

@@ -83,6 +83,7 @@ export async function createGameRuntime(options: {
     )
       throw new Error('Invalid runtime configuration');
   await store.interruptOrphans(owner);
+  if (!owner.isActive()) throw new Error('Server unavailable');
   const app = buildApp();
   let closed = false;
   const registry = createRegistry({

@@ -81,3 +81,40 @@ it('does not let a pending availability check race a newer cross-action mutation
     await h.close();
   }
 });
+
+it('correlates rate-limit and delivery-fallback control errors without adding IDs to gameplay errors', async () => {
+  let failDelivery = false;
+  const h = await testRuntime({
+    outbound(event) {
+      if (failDelivery && event.kind === 'ack')
+        throw new Error('private failure');
+      return 'send';
+    },
+  });
+  try {
+    const a = await h.connect();
+    await sync(a.socket);
+    failDelivery = true;
+    const fallbackId = randomUUID();
+    expect(
+      await a.socket.emitWithAck('session.sync', { requestId: fallbackId }),
+    ).toEqual({
+      ok: false,
+      error: { code: 'SERVER_UNAVAILABLE', requestId: fallbackId },
+    });
+    failDelivery = false;
+    for (let i = 0; i < 20; i++)
+      await a.socket.emitWithAck('session.sync', { requestId: randomUUID() });
+    const requestId = randomUUID();
+    expect(await a.socket.emitWithAck('session.sync', { requestId })).toEqual({
+      ok: false,
+      error: { code: 'RATE_LIMITED', requestId },
+    });
+    expect(await a.socket.emitWithAck('answer.submit', { requestId })).toEqual({
+      ok: false,
+      error: { code: 'RATE_LIMITED', requestId: null },
+    });
+  } finally {
+    await h.close();
+  }
+});

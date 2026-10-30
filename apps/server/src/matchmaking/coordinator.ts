@@ -46,6 +46,8 @@ interface Room {
   public: Lobby;
   cancelExpiry: () => void;
   grace: Map<string, () => void>;
+  graceDeadlines: Map<string, number>;
+  expiresAtMono: number;
 }
 export function createCoordinator(options: {
   clock: ActorClock;
@@ -89,8 +91,8 @@ export function createCoordinator(options: {
     let admission: Admission;
     if (p.kind === 'match') return null;
     if (p.kind === 'lobby') {
-      const room = rooms.get(p.lobbyId);
-      if (!room) throw new TransportFailure('ROOM_UNAVAILABLE');
+      const room = liveRoom(p.lobbyId);
+      if (!room) return { ...scope(session), admission: { kind: 'idle' } };
       admission = { kind: 'lobby', lobby: structuredClone(room.public) };
     } else if (p.kind === 'starting')
       admission = { kind: 'starting', lobbyId: p.lobbyId, setup: p.setup };
@@ -114,16 +116,30 @@ export function createCoordinator(options: {
     }
   }
   function cancelRoom(room: Room) {
+    if (rooms.get(room.public.lobbyId) !== room) return;
     room.cancelExpiry();
     for (const cancel of room.grace.values()) cancel();
     rooms.delete(room.public.lobbyId);
     if (room.public.inviteCode) codes.delete(room.public.inviteCode);
     for (const m of room.public.members) {
-      if (user(m.playerId).place.kind === 'lobby') {
+      const place = user(m.playerId).place;
+      if (place.kind === 'lobby' && place.lobbyId === room.public.lobbyId) {
         change(m.playerId, { kind: 'idle' });
         notify(m.playerId);
       }
     }
+  }
+  function liveRoom(id: string): Room | undefined {
+    const room = rooms.get(id);
+    if (
+      room &&
+      (clock.monoNow() >= room.expiresAtMono ||
+        [...room.graceDeadlines.values()].some((at) => clock.monoNow() >= at))
+    ) {
+      cancelRoom(room);
+      return undefined;
+    }
+    return room;
   }
   function idle(id: string) {
     const p = user(id).place;
@@ -154,6 +170,8 @@ export function createCoordinator(options: {
       },
       cancelExpiry: () => {},
       grace: new Map(),
+      graceDeadlines: new Map(),
+      expiresAtMono: clock.monoNow() + config.lobbyTtlMs,
     };
     room.cancelExpiry = clock.schedule(
       clock.monoNow() + config.lobbyTtlMs,
@@ -285,10 +303,11 @@ export function createCoordinator(options: {
         return;
       }
       if (p.kind === 'lobby') {
-        const room = rooms.get(p.lobbyId);
+        const room = liveRoom(p.lobbyId);
         if (room) {
           room.grace.get(id)?.();
           room.grace.delete(id);
+          room.graceDeadlines.delete(id);
           const m = room.public.members.find((m) => m.playerId === id);
           if (m) m.connected = true;
           if (replacing)
@@ -308,13 +327,14 @@ export function createCoordinator(options: {
         return;
       }
       if (p.kind === 'lobby') {
-        const room = rooms.get(p.lobbyId);
+        const room = liveRoom(p.lobbyId);
         if (!room) return;
         for (const m of room.public.members) {
           m.ready = false;
           if (m.playerId === id) m.connected = false;
         }
         room.grace.get(id)?.();
+        room.graceDeadlines.set(id, clock.monoNow() + config.lobbyGraceMs);
         room.grace.set(
           id,
           clock.schedule(clock.monoNow() + config.lobbyGraceMs, () =>
@@ -421,7 +441,7 @@ export function createCoordinator(options: {
     },
     preview(session: GameSession, code: string): RoomPreview {
       assert(session);
-      const room = rooms.get(codes.get(code) ?? '');
+      const room = liveRoom(codes.get(code) ?? '');
       if (!room) throw new TransportFailure('ROOM_UNAVAILABLE');
       return {
         ...scope(session),
@@ -443,7 +463,7 @@ export function createCoordinator(options: {
         () => {
           const id = session.principal.playerId;
           idle(id);
-          const room = rooms.get(codes.get(code) ?? '');
+          const room = liveRoom(codes.get(code) ?? '');
           if (
             !room ||
             room.public.members.length >= 2 ||
@@ -468,13 +488,14 @@ export function createCoordinator(options: {
         { code, ...request },
         () => {
           const id = session.principal.playerId;
-          const room = rooms.get(codes.get(code) ?? '');
+          const room = liveRoom(codes.get(code) ?? '');
           if (!room || !room.public.members.some((m) => m.playerId === id))
             throw new TransportFailure('ROOM_UNAVAILABLE');
           if (room.public.hostId === id) cancelRoom(room);
           else {
             room.grace.get(id)?.();
             room.grace.delete(id);
+            room.graceDeadlines.delete(id);
             room.public.members = room.public.members.filter(
               (m) => m.playerId !== id,
             );
@@ -490,7 +511,7 @@ export function createCoordinator(options: {
       return mutation(session, request, 'lobby.ready', request, () => {
         const id = session.principal.playerId;
         const p = user(id).place;
-        const room = rooms.get(request.lobbyId);
+        const room = liveRoom(request.lobbyId);
         if (p.kind !== 'lobby' || p.lobbyId !== request.lobbyId || !room)
           throw new TransportFailure('ADMISSION_CONFLICT');
         const member = room.public.members.find((m) => m.playerId === id)!;
