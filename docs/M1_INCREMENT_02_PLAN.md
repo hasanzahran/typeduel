@@ -1,6 +1,6 @@
 # M1 Increment 02 — Durable authoritative match actor
 
-Status: implementation authorized by the owner. Baseline: accepted PR #3,
+Status: implemented and verified; ready for owner review. Baseline: accepted PR #3,
 merged at `99910e5`. This increment does not authorize Increment 03, UI changes,
 audio generation, external provisioning, large local installations or a main merge.
 
@@ -52,7 +52,9 @@ audio generation, external provisioning, large local installations or a main mer
 
 Lead owns public contracts, manifests/lockfile, test configuration, CI and shared
 documentation. Backend exclusively owns database schema/migrations, store,
-ownership, actor/clock, restart helper and baseline tests. QA exclusively owns
+ownership, clock, restart helper and persistence baseline tests. During execution,
+actor implementation and its unit tests moved exclusively to Lead so Backend and
+QA could continue concurrently; Backend and Mobile cross-reviewed the actor. QA exclusively owns
 `apps/server/tests/integration/qa/`, including child-process fixtures. Mobile owns
 `docs/M1_MOBILE_INTEGRATION.md`; Content owns `docs/M1_CONTENT_PREPARATION.md`.
 Neither preparation role changes application code.
@@ -122,7 +124,150 @@ Custom-keyboard evaluation remains an M1 requirement; implementation and audio
 generation are not authorized. The eight proposed words are editorial candidates,
 not approved recordings or production coverage. See the separate preparation docs.
 
-## Verification results
+## Verification results — October 29, 2026 (local time)
 
-Implementation and final verification are in progress. No real-PostgreSQL, native
-gameplay or final-head CI pass is claimed by this planning baseline.
+Implementation head: `8ee584adfd10a1fd0f8ef6e83a5ae80eeb10c733`.
+[GitHub CI run 41000754332](https://github.com/hasanzahran/typeduel/actions/runs/41000754332)
+passed both `quality` and `postgres-integration` at that exact head. This report is
+committed afterward; the lead verifies both checks again at the final PR head
+before handing it to the owner. No automatic merge or Increment 03 implementation.
+
+| Check                           | Actual result and environment                                                                                                                                                                                 |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dependency installation         | Approved four exact pins installed; entire resolved graph accepted under unchanged `minimumReleaseAge: 1440`, strict engines and build-script allowlist. No mobile dependency changes.                        |
+| Frozen installation             | Passed in the main workspace, a clean validation worktree, and both CI jobs. The clean install reused the local package store; no database installation.                                                      |
+| `pnpm check`                    | Passed in the clean validation worktree at `8ee584a`, including formatting, lint/boundaries/tokens, TypeScript, tests, builds and production fixture-isolation scan.                                          |
+| Unit/component tests            | **104 passed**: 16 contracts, 80 server, 8 mobile.                                                                                                                                                            |
+| `pnpm test:integration`         | **44 passed** in CI: 5 Backend baseline tests and 39 independent QA cases across five files. Real PostgreSQL connections and Node child processes, not an in-memory database substitute.                      |
+| Database identity/durability    | CI asserted `server_version_num=180006`, `fsync=on`, `full_page_writes=on`, `synchronous_commit=on` before testing. Image manifest digest independently verified and pinned above.                            |
+| Server/contracts builds         | Passed; strict TypeScript compilation.                                                                                                                                                                        |
+| Production exports              | Web, iOS and Android exports passed; development fixture markers excluded. These are bundle checks, not native gameplay evidence.                                                                             |
+| `pnpm expo:check`               | Dependencies up to date; Expo Doctor **20/20** locally and in CI.                                                                                                                                             |
+| Missing-database negative check | `pnpm test:integration` without `TEST_DATABASE_URL` failed explicitly as intended; no skipped-test pass.                                                                                                      |
+| Scope/history check             | Mobile application, design, M0 evidence, architecture source documents and dependency security configuration unchanged; setup ZIP/extracted package/local agent definitions excluded. Main history preserved. |
+
+The real-database suite proves rollback after individual writes, actual SQL
+constraint rejection, initial-create rollback, concurrent answers and independent
+matches, original receipt order behind delayed storage, exact deadline/grace
+behavior, fresh evaluation of rejected IDs, lost COMMIT response reconciliation,
+48 original counted ACKs after terminal recovery, closed-result atomicity, viewer
+privacy, and failure of an asynchronous publication subscriber without rescoring.
+
+Crash tests kill a Node actor process before COMMIT, after COMMIT and before
+publication. A separate cross-process test leaves the old Node process alive,
+terminates only its ownership session, observes takeover waiting for its old
+transaction, then proves the old process cannot commit or serve authoritative
+state. Unfinished matches interrupt without a match winner; confirmed final
+results stay completed. Owner loss during acquisition and repeated recovery are
+also exercised.
+
+Cross-review and the first full database run found issues that were fixed and
+retested: SQL NULL acceptance in terminal CHECK constraints; lost-session
+activation during ownership acquisition; pre-lock operation ambiguity; foreign
+round-ID collision handling; operation reconciliation against a different owner;
+and unhandled errors on checked-out PostgreSQL clients. The initial full CI run
+also caught two QA trace errors: forbidding the permitted closed-result spelling
+reveal, and preparing another round before the scoreless round deadline. Tests
+now distinguish raw submitted text from canonical reveal and explicitly advance
+the deadline without changing gameplay rules or weakening the 48-ACK assertion.
+
+## Delivered responsibilities and commits
+
+| Commit    | Responsibility and change                                                                                                                                          |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `3c036a3` | Lead: frozen boundaries, restart contract/test, approved dependencies, integration configuration and pinned database CI.                                           |
+| `e1caeee` | Lead: approved architecture/roadmap and database version/durability verification.                                                                                  |
+| `f805445` | Mobile: future Socket.IO/committed-state consumer design only.                                                                                                     |
+| `83497bb` | Content: eight-word editorial worksheet and audio validation requirements only.                                                                                    |
+| `1a44e0f` | Lead: development commands, dependency notes and formatted preparation handoffs.                                                                                   |
+| `759658c` | Backend: private schema/migration, checkpoints, transactional store, owner fencing, clock and pure restart helper; baseline tests.                                 |
+| `8c5b743` | Lead, cross-reviewed by Backend/Mobile: serialized actor, committed publication, uncertainty pause/reconciliation, read-only terminal ACK recovery and unit tests. |
+| `3471bb4` | QA: independent real-PostgreSQL race, failure, privacy and crash tests.                                                                                            |
+| `16d14d6` | Lead/Backend review: sanitized synchronous actor admission failures and regression test.                                                                           |
+| `ae68aa7` | Backend: reconcile only operations belonging to the current owner, with regression test.                                                                           |
+| `ab3fb16` | Backend/QA review: handle asynchronous loss of checked-out transaction connections.                                                                                |
+| `8ee584a` | QA: live-process fencing and corrected deadline/privacy test traces.                                                                                               |
+
+Documentation-only verification commits follow this implementation list. Source
+agent work stayed in isolated worktrees and was cherry-picked without rewriting
+existing history. No application code was written by the Mobile/Content roles.
+
+## Remaining limits and next parallel work
+
+- No material Increment 02 blocker remains after the passing checks above. Owner
+  review is still required; the lead must check the final PR head, not rely only on
+  this earlier implementation-head run.
+- PostgreSQL tests ran in the explicitly authorized ephemeral CI service. No local
+  PostgreSQL installation or external database/service was provisioned. A later
+  device-play environment needs separately approved infrastructure/tooling.
+- `createMatchActor` is an internal runtime boundary, not wired into the HTTP
+  server. Increment 03 must maintain one live actor per match, supply verified
+  identities/session generations, and call `reconcile()` when paused storage can
+  be checked again. A bounded retry budget pauses the FIFO rather than guessing a
+  result. Permanent conflicts/fencing fail closed.
+- This increment does not promise live gameplay restoration across process loss,
+  historical event replay, multi-active deployments or transaction-pooled session
+  locks. Snapshot/ACK recovery remains the agreed model.
+- The suite covers actual session termination and controlled COMMIT-response loss.
+  It does not claim real network-partition, managed-database failover or production
+  load testing. A real SQL lock-timeout followed by actor reconciliation is not a
+  distinct end-to-end case; in-flight DB ambiguity and paused actor FIFO are
+  separately tested.
+- Existing Metro peer-version warning and Drizzle Kit's deprecated esbuild-kit
+  development dependencies remain documented. Frozen installation and Expo
+  validation pass; policies and unrelated dependency versions were not changed.
+- Native gameplay, synchronized audio and keyboard fairness remain later M1
+  acceptance gates. Preserve accepted M0 Gboard limitation; custom keyboard
+  selection/implementation still needs review. Eight candidate words are pending
+  editorial/rights/listening approval, with no generated audio or invented device
+  evidence.
+
+After acceptance and explicit Increment 03 approval, Backend can implement the
+Socket.IO identity/session/room adapter around the frozen actor while Mobile
+implements the headless committed-state consumer and QA independently exercises
+transport loss/duplicates/reconnects. Lead owns the shared transport schema and
+integration. Content editorial review can proceed independently; generation still
+requires its separate authorization. Increment 04 then joins reviewed audio and
+minimal approved Game/Results bindings for the first real physical two-phone
+match, with common late-start handling agreed before claiming timing fairness.
+
+## Exact changed files
+
+- `.github/workflows/ci.yml`
+- `README.md`
+- `apps/server/.env.example`
+- `apps/server/drizzle.config.ts`
+- `apps/server/drizzle/0000_game_core.sql`
+- `apps/server/drizzle/meta/0000_snapshot.json`
+- `apps/server/drizzle/meta/_journal.json`
+- `apps/server/package.json`
+- `apps/server/src/db/checkpoint.ts`
+- `apps/server/src/db/client.ts`
+- `apps/server/src/db/match-store.ts`
+- `apps/server/src/db/migrate.ts`
+- `apps/server/src/db/owner.ts`
+- `apps/server/src/db/schema.ts`
+- `apps/server/src/db/types.ts`
+- `apps/server/src/game/actor.ts`
+- `apps/server/src/game/clock.ts`
+- `apps/server/src/game/engine.ts`
+- `apps/server/tests/db/checkpoint.test.ts`
+- `apps/server/tests/game/actor.test.ts`
+- `apps/server/tests/integration/backend/store.test.ts`
+- `apps/server/tests/integration/qa/atomicity.test.ts`
+- `apps/server/tests/integration/qa/privacy.test.ts`
+- `apps/server/tests/integration/qa/receipt-order.test.ts`
+- `apps/server/tests/integration/qa/recovery.test.ts`
+- `apps/server/tests/integration/qa/support/actor-child.ts`
+- `apps/server/tests/integration/qa/support/harness.ts`
+- `apps/server/vitest.config.ts`
+- `apps/server/vitest.integration.config.ts`
+- `docs/ARCHITECTURE_DECISIONS.md`
+- `docs/IMPLEMENTATION_PLAN.md`
+- `docs/M1_CONTENT_PREPARATION.md`
+- `docs/M1_INCREMENT_02_PLAN.md`
+- `docs/M1_MOBILE_INTEGRATION.md`
+- `package.json`
+- `packages/contracts/src/gameplay.ts`
+- `packages/contracts/tests/gameplay.test.ts`
+- `pnpm-lock.yaml`

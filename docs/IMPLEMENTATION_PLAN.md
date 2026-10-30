@@ -2,7 +2,7 @@
 
 **Date:** October 29, 2026
 
-**Status:** M0 formally accepted. M1 Increment 01 accepted and merged in PR #3 (`99910e5`). Increment 02 durable persistence/actor implementation is owner-authorized and in progress; Increment 03 remains behind its review gate.
+**Status:** M0 formally accepted. M1 Increment 01 accepted and merged in PR #3 (`99910e5`). Increment 02 durable persistence/actor implementation passes 104 unit/component tests and 44 PostgreSQL integration tests; final-head review is the handoff gate. Increment 03 remains unimplemented and requires separate approval.
 
 **Sources of truth:** TypeDuel PRD v0.4, System Design v1.2, UI/UX Design v1.0, plus the owner-approved M1 scope and development reconnect policy recorded below.
 
