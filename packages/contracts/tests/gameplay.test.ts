@@ -400,3 +400,20 @@ describe('strict gameplay contracts', () => {
     ).toBe(false);
   });
 });
+
+describe('UTF-16 answer limit', () => {
+  it('enforces the approved code-unit limit for supplementary characters', () => {
+    expect(
+      AnswerSubmitSchema.safeParse({ ...answer, text: '😀'.repeat(60) })
+        .success,
+    ).toBe(true);
+    expect(
+      AnswerSubmitSchema.safeParse({ ...answer, text: '😀'.repeat(61) })
+        .success,
+    ).toBe(false);
+    expect(
+      AnswerSubmitSchema.safeParse({ ...answer, text: 'a'.repeat(121) })
+        .success,
+    ).toBe(false);
+  });
+});
