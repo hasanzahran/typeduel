@@ -32,7 +32,7 @@ export function createHandlers(options: {
   clock: ActorClock;
   hooks?: RuntimeHooks | undefined;
 }) {
-  const limits = createLimits(options.clock.monoNow);
+  const limits = createLimits(() => options.clock.monoNow());
   const { sessions, coordinator, registry, clock, hooks } = options;
   return async (
     session: GameSession,

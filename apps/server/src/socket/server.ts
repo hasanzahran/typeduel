@@ -46,7 +46,7 @@ export function attachGameSocket(
   });
   const namespace = io.of('/game');
   const verified = new WeakMap<object, Principal>();
-  const limits = createLimits(options.clock.monoNow);
+  const limits = createLimits(() => options.clock.monoNow());
   namespace.use((socket, next) => {
     void (async () => {
       try {

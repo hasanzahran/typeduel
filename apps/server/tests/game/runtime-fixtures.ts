@@ -23,8 +23,14 @@ export async function testRuntime(
   const jobs = new Map<symbol, { at: number; run: () => void }>();
   const lost = new Set<() => void>();
   const clock = {
-    monoNow: () => now,
-    utcNow: () => 1800000000000 + now,
+    monoNow() {
+      if (this !== clock) throw new Error('Clock receiver lost');
+      return now;
+    },
+    utcNow() {
+      if (this !== clock) throw new Error('Clock receiver lost');
+      return 1800000000000 + now;
+    },
     schedule(at: number, run: () => void) {
       const id = Symbol();
       jobs.set(id, { at, run });
@@ -154,6 +160,9 @@ export async function testRuntime(
         socket.once('connect_error', reject);
       });
       return { socket, playerId };
+    },
+    setNow(at: number) {
+      now = at;
     },
     async advance(at: number) {
       now = at;

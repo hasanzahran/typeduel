@@ -25,7 +25,7 @@ export function roomRoutes(
     hooks?: RuntimeHooks | undefined;
   },
 ) {
-  const limits = createLimits(options.clock.monoNow);
+  const limits = createLimits(() => options.clock.monoNow());
   async function authenticate(req: FastifyRequest) {
     if (!limits.allow(`ip:${req.ip}`, 2, 20))
       throw new TransportFailure('RATE_LIMITED');
