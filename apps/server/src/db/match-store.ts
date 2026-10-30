@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { AnswerAckSchema, TransitionBatchSchema } from '@typeduel/contracts';
 import { interruptForServerRestart } from '../game/engine.js';
@@ -11,7 +11,7 @@ import {
   StoreError,
   type FaultContext,
   type FaultHook,
-  type MatchStore,
+  type DiscoverableMatchStore,
   type OwnerLease,
   type PersistedMatch,
 } from './types.js';
@@ -97,7 +97,7 @@ function validateProgress(previous: MatchState, next: MatchState): void {
 export function createMatchStore(options: {
   database: Database;
   hooks?: FaultHook;
-}): MatchStore {
+}): DiscoverableMatchStore {
   const { database, hooks } = options;
   async function lockOwner(
     client: PoolClient,
@@ -317,7 +317,7 @@ export function createMatchStore(options: {
       owner: { ...owner.token },
     };
   }
-  const store: MatchStore = {
+  const store: DiscoverableMatchStore = {
     async createMatch({ owner, operationId, state: input }) {
       if (!z.uuid().safeParse(operationId).success)
         throw new StoreError('INVALID_STATE');
@@ -332,6 +332,15 @@ export function createMatchStore(options: {
         throw new StoreError('INVALID_STATE');
       const context = { operationId, matchId: state.matchId };
       return transaction(owner, context, async (client) => {
+        const players = state.participants.map((p) => p.playerId).sort();
+        for (const playerId of players) {
+          const key = createHash('sha256')
+            .update(`typeduel-player:${database.schemaName}:${playerId}`)
+            .digest()
+            .readBigInt64BE()
+            .toString();
+          await client.query('SELECT pg_advisory_xact_lock($1::bigint)', [key]);
+        }
         const previous = await selectMatch(client, state.matchId, context);
         if (previous) {
           if (
@@ -343,6 +352,16 @@ export function createMatchStore(options: {
             return previous;
           throw new StoreError('CONFLICT');
         }
+        const existing = await client.query<{ status: string }>(
+          'SELECT m.status FROM player_match_bindings b JOIN matches m ON m.id=b.last_match_id WHERE b.player_id=ANY($1::uuid[])',
+          [players],
+        );
+        if (
+          existing.rows.some(
+            (r) => !['COMPLETED', 'ABORTED'].includes(r.status),
+          )
+        )
+          throw new StoreError('CONFLICT');
         const category = await categoryId(client, state);
         await dml(
           client,
@@ -371,6 +390,14 @@ export function createMatchStore(options: {
             'insert_participant',
             'INSERT INTO match_participants (match_id,player_id,slot) VALUES ($1,$2,$3)',
             [state.matchId, participant.playerId, index + 1],
+          );
+        for (const playerId of players)
+          await dml(
+            client,
+            context,
+            'upsert_binding',
+            'INSERT INTO player_match_bindings (player_id,last_match_id) VALUES ($1,$2) ON CONFLICT (player_id) DO UPDATE SET last_match_id=EXCLUDED.last_match_id',
+            [playerId, state.matchId],
           );
         return {
           state,
@@ -468,6 +495,22 @@ export function createMatchStore(options: {
           context,
         );
       });
+    },
+    async readLatestForPlayer(playerId) {
+      if (!z.uuid().safeParse(playerId).success)
+        throw new StoreError('INVALID_STATE');
+      try {
+        const found = await database.pool.query<{ last_match_id: string }>(
+          'SELECT last_match_id FROM player_match_bindings WHERE player_id=$1',
+          [playerId],
+        );
+        return found.rows[0]
+          ? store.readCommitted(found.rows[0].last_match_id)
+          : null;
+      } catch (error) {
+        if (error instanceof StoreError) throw error;
+        throw new StoreError('UNAVAILABLE');
+      }
     },
     async readCommitted(matchId) {
       if (!z.uuid().safeParse(matchId).success)
@@ -581,6 +624,7 @@ export function createMatchStore(options: {
     createMatch: guarded(store.createMatch),
     commitTransition: guarded(store.commitTransition),
     readCommitted: guarded(store.readCommitted),
+    readLatestForPlayer: guarded(store.readLatestForPlayer),
     resolveOperation: guarded(store.resolveOperation),
     interruptOrphans: guarded(store.interruptOrphans),
   };

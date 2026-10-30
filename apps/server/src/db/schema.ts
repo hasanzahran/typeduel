@@ -114,6 +114,19 @@ export const matchParticipants = pgTable(
     check('participant_slot_range', sql`${t.slot} in (1,2)`),
   ],
 );
+export const playerMatchBindings = pgTable(
+  'player_match_bindings',
+  {
+    playerId: uuid('player_id').primaryKey(),
+    lastMatchId: uuid('last_match_id').notNull(),
+  },
+  (t) => [
+    foreignKey({
+      columns: [t.lastMatchId, t.playerId],
+      foreignColumns: [matchParticipants.matchId, matchParticipants.playerId],
+    }),
+  ],
+);
 export const matchRounds = pgTable(
   'match_rounds',
   {
