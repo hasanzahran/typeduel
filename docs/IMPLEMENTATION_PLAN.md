@@ -2,7 +2,7 @@
 
 **Date:** October 30, 2026
 
-**Status:** M0 formally accepted. M1 Increment 01 accepted and merged in PR #3 (`99910e5`). Increment 02 is accepted and merged in PR #4 (`f428f0d`). Increment 03 is accepted and merged in PR #5 (`8c29e2a`), with 300 automated tests including 102 real PostgreSQL/Socket.IO integration tests and green accepted-head CI. The coordinated [Increment 04 first-playable-pair plan](M1_INCREMENT_04_PLAN.md) is prepared for approval; implementation and audio generation have not begun.
+**Status:** M0 formally accepted. M1 Increment 01 accepted and merged in PR #3 (`99910e5`). Increment 02 is accepted and merged in PR #4 (`f428f0d`). Increment 03 is accepted and merged in PR #5 (`8c29e2a`), with 300 automated tests including 102 real PostgreSQL/Socket.IO integration tests and green accepted-head CI. The coordinated [Increment 04 first-playable-pair plan](M1_INCREMENT_04_PLAN.md) includes production-quality acceptance gates and a maximum of two initial specialist workstreams; it is prepared for approval; implementation and audio generation have not begun.
 
 **Sources of truth:** TypeDuel PRD v0.4, System Design v1.2, UI/UX Design v1.0, plus the owner-approved M1 scope and development reconnect policy recorded below.
 
