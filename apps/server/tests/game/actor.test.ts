@@ -89,8 +89,15 @@ function harness(state?: MatchState) {
     },
   };
   const publish = vi.fn();
-  const actor = () =>
-    createMatchActor({ store, owner, initial: record, clock, publish });
+  const actor = (extra: Partial<Parameters<typeof createMatchActor>[0]> = {}) =>
+    createMatchActor({
+      store,
+      owner,
+      initial: record,
+      clock,
+      publish,
+      ...extra,
+    });
   return {
     prepared,
     owner,
@@ -302,4 +309,84 @@ describe('serialized authoritative actor', () => {
     expect(h.record.state.participants.map((p) => p.score)).toEqual([0, 0]);
     actor.close();
   });
+});
+
+describe('initial lifecycle bootstrap', () => {
+  it.each([9999, 10000, null])(
+    'preserves original grace with reconnect offset %s',
+    async (offset) => {
+      const h = harness(
+        createFixtureMatch({
+          clockAnchor: { monoMs: 0, utcEpochMs: 1800000000000 },
+        }),
+      );
+      h.now = 20000;
+      const playerId = h.record.state.participants[0].playerId;
+      const actor = h.actor({
+        bootstrapLifecycle: [
+          {
+            command: { type: 'player.disconnect', playerId },
+            receivedAtMonoMs: 100,
+          },
+          ...(offset === null
+            ? []
+            : [
+                {
+                  command: { type: 'player.reconnect' as const, playerId },
+                  receivedAtMonoMs: 100 + offset,
+                },
+              ]),
+        ],
+      });
+      await actor.bootstrapReady;
+      expect(h.record.state.phase).toBe(
+        offset === 9999 ? 'PREPARING_ROUND' : 'ABORTED',
+      );
+      expect(h.record.state.completion).toBeNull();
+      actor.close();
+    },
+  );
+  it('rejects old, future and noninitial bootstrap before persistence', () => {
+    const h = harness(createFixtureMatch());
+    const command = {
+      type: 'player.disconnect' as const,
+      playerId: h.record.state.participants[0].playerId,
+    };
+    expect(() =>
+      h.actor({ bootstrapLifecycle: [{ command, receivedAtMonoMs: 999 }] }),
+    ).toThrow();
+    expect(() =>
+      h.actor({ bootstrapLifecycle: [{ command, receivedAtMonoMs: 1001 }] }),
+    ).toThrow();
+    expect(() => harness().actor({ bootstrapLifecycle: [] })).toThrow();
+    expect(h.store.commitTransition).not.toHaveBeenCalled();
+  });
+});
+
+it('reserves final disconnect capacity and rejects a replacement pair before overflow', async () => {
+  const h = harness();
+  const held = deferred();
+  h.store.commitTransition = vi.fn(async (input) => {
+    await held.promise;
+    return h.save(input);
+  });
+  const actor = h.actor({ maxQueueLength: 6 });
+  const playerId = h.record.state.participants[0].playerId;
+  const requests = Array.from({ length: 4 }, () =>
+    actor.acceptPlayerCommand({ playerId }, h.packet('wrong')),
+  );
+  expect(actor.canAcceptReplacement()).toBe(false);
+  await expect(actor.replaceConnection(playerId)).rejects.toMatchObject({
+    code: 'UNAVAILABLE',
+  });
+  const disconnects = h.record.state.participants.map((p) =>
+    actor.acceptTrustedCommand({
+      type: 'player.disconnect',
+      playerId: p.playerId,
+    }),
+  );
+  held.release();
+  await Promise.all([...requests, ...disconnects]);
+  expect(h.record.state.participants.every((p) => !p.connected)).toBe(true);
+  actor.close();
 });

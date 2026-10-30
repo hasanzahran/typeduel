@@ -14,6 +14,10 @@ const Text = z
   .string()
   .min(1)
   .max(MAX_ANSWER_LENGTH)
+  .refine(
+    (text) => text.length <= MAX_ANSWER_LENGTH,
+    'Maximum UTF-16 length exceeded',
+  )
   .refine((text) => text.trim().length > 0, 'Nonblank text required');
 const identity = { matchId: Id, roundId: Id };
 export const AnswerSubmitSchema = z.strictObject({

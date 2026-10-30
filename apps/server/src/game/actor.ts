@@ -24,6 +24,10 @@ export interface ActorResult {
   ack: AnswerAck | null;
   error: EngineError | null;
 }
+export interface BootstrapLifecycle {
+  command: { type: 'player.disconnect' | 'player.reconnect'; playerId: string };
+  receivedAtMonoMs: number;
+}
 interface Pending {
   command: GameCommand | null;
   receipt: ReceiptContext;
@@ -54,6 +58,7 @@ export function createMatchActor(options: {
   hooks?: FaultHook;
   operationId?: () => string;
   maxQueueLength?: number;
+  bootstrapLifecycle?: readonly BootstrapLifecycle[];
 }) {
   const { store, owner, clock, publish, hooks } = options;
   let record = structuredClone(options.initial);
@@ -69,8 +74,41 @@ export function createMatchActor(options: {
   if (!Number.isSafeInteger(maxQueueLength) || maxQueueLength < 1)
     throw new StoreError('INVALID_STATE');
   const queue: Pending[] = [];
+  const bootstrap =
+    options.bootstrapLifecycle === undefined
+      ? null
+      : structuredClone(options.bootstrapLifecycle);
+  const bootstrapNow = clock.monoNow();
+  if (bootstrap !== null) {
+    let previous = record.state.lastInput.atMonoMs;
+    if (
+      record.state.phase !== 'PREPARING_ROUND' ||
+      record.state.roundNumber !== 0 ||
+      record.state.stateVersion !== 0 ||
+      record.storeRevision !== 1n ||
+      bootstrap.length > 126 ||
+      !Number.isSafeInteger(bootstrapNow)
+    )
+      throw new StoreError('INVALID_STATE');
+    for (const entry of bootstrap) {
+      if (
+        !Number.isSafeInteger(entry.receivedAtMonoMs) ||
+        entry.receivedAtMonoMs < previous ||
+        entry.receivedAtMonoMs > bootstrapNow ||
+        !['player.disconnect', 'player.reconnect'].includes(
+          entry.command.type,
+        ) ||
+        !record.state.participants.some(
+          (p) => p.playerId === entry.command.playerId,
+        )
+      )
+        throw new StoreError('INVALID_STATE');
+      previous = entry.receivedAtMonoMs;
+    }
+  }
   let sequence = record.state.lastInput.ingressSequence;
   let closed = false;
+  let bootstrapping = bootstrap !== null;
   let paused = false;
   let running: Promise<void> | null = null;
   let cancelWake: (() => void) | undefined;
@@ -90,7 +128,7 @@ export function createMatchActor(options: {
   function armWake() {
     cancelWake?.();
     cancelWake = undefined;
-    if (closed || paused) return;
+    if (closed || paused || bootstrapping) return;
     const at = getNextWakeAt(record.state);
     if (at !== null) {
       cancelWake = clock.schedule(at, () => {
@@ -240,14 +278,22 @@ export function createMatchActor(options: {
       if (queue.length && !closed && !paused) run();
     });
   }
-  function enqueue(command: GameCommand | null): Promise<ActorResult> {
+  function enqueue(
+    command: GameCommand | null,
+    preservedReceipt?: number,
+    start = true,
+  ): Promise<ActorResult> {
     // No await before receipt capture and insertion. Caller mutation after return
     // cannot change the queued payload or its fingerprint.
     try {
-      const receivedAtMonoMs = clock.monoNow();
+      const receivedAtMonoMs = preservedReceipt ?? clock.monoNow();
       const ingressSequence = ++sequence;
       ensureActive();
-      if (queue.length >= maxQueueLength) throw new StoreError('UNAVAILABLE');
+      const capacity =
+        !start || command?.type === 'player.disconnect'
+          ? maxQueueLength
+          : Math.max(1, maxQueueLength - 2);
+      if (queue.length >= capacity) throw new StoreError('UNAVAILABLE');
       const copy = structuredClone(command);
       const operationId = nextOperationId();
       return new Promise((resolve, reject) => {
@@ -259,7 +305,7 @@ export function createMatchActor(options: {
           resolve,
           reject,
         });
-        run();
+        if (start) run();
       });
     } catch {
       return Promise.reject(
@@ -267,8 +313,49 @@ export function createMatchActor(options: {
       );
     }
   }
-  armWake();
+  const bootstrapReady =
+    bootstrap === null
+      ? Promise.resolve()
+      : Promise.all([
+          ...bootstrap.map((entry) =>
+            enqueue(entry.command, entry.receivedAtMonoMs, false),
+          ),
+          enqueue(null, bootstrapNow, false),
+        ]).then(() => {
+          bootstrapping = false;
+          armWake();
+        });
+  // Keep rejection handled even if shutdown races the registry's await.
+  void bootstrapReady.catch(() => {});
+  if (bootstrap !== null) run();
+  else armWake();
   return {
+    bootstrapReady,
+    isIdle: () => queue.length === 0 && running === null,
+    canAcceptReconnect: () =>
+      !closed &&
+      (bootstrapping || queue.length < Math.max(1, maxQueueLength - 2)),
+    canAcceptReplacement: () =>
+      !closed && maxQueueLength >= 4 && queue.length <= maxQueueLength - 4,
+    replaceConnection(playerId: string): Promise<ActorResult> {
+      if (closed || maxQueueLength < 4 || queue.length > maxQueueLength - 4)
+        return Promise.reject(new StoreError('UNAVAILABLE'));
+      const at = clock.monoNow();
+      const disconnected = enqueue(
+        { type: 'player.disconnect', playerId },
+        at,
+        false,
+      );
+      const reconnected = enqueue(
+        { type: 'player.reconnect', playerId },
+        at,
+        false,
+      );
+      run();
+      return Promise.all([disconnected, reconnected]).then(
+        (results) => results[1]!,
+      );
+    },
     acceptPlayerCommand(
       principal: { playerId: string },
       raw: unknown,

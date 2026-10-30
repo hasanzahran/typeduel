@@ -1,0 +1,376 @@
+# M1 Increment 03 — Authenticated real-time multiplayer
+
+Status: owner-approved; Increment 03 implementation authorized. Shared freeze and implementation evidence are recorded below. Prepared October 29, 2026 (America/Los_Angeles). PR #4 is merged and Increment 02 is accepted. Baseline: `origin/main` merge `f428f0d`, whose tree matches accepted implementation head `9c2830a`.
+
+Sources of truth: [PRD](PRD.md), [System Design](SYSTEM_DESIGN.md), [UI/UX](UI_UX_DESIGN.md), [implementation plan](IMPLEMENTATION_PLAN.md), [Increment 02](M1_INCREMENT_02_PLAN.md), [mobile handoff](M1_MOBILE_INTEGRATION.md), and [content preparation](M1_CONTENT_PREPARATION.md). This plan extends the accepted engine and actor; it does not reopen their architecture.
+
+## 1. Outcome and boundary
+
+Two authenticated Socket.IO clients can enter a private lobby or compatible General queue, consent to immutable settings, create one durable match, submit commands, and converge on committed state through loss, retries, disconnects and backend restart. The Expo app gains tested connection/consumer modules, without changing its approved screens or theme.
+
+Real-socket tests use server-only synthetic word/audio fixtures. Production admission requires an eligible source and fails closed when none is configured. Increment 03 does not supply a playable production catalog, social sign-in UI, native audio, a custom keyboard, or physical two-phone gameplay evidence. Increment 04 joins approved recordings to minimal existing Game/Results bindings for the first physical iPhone-versus-Android match.
+
+No services are provisioned, audio generated, dependencies installed, application code changed, or implementation worktrees created during this planning pass. Only this planning document is added.
+
+## 2. Contract freeze before parallel implementation
+
+The lead owns additive strict Zod schemas and typed Socket.IO event maps. Preserve existing `AnswerSubmit`, `AnswerAck`, audio commands, snapshots, transition batches, scoring and timing semantics. All agents review the freeze commit before building against it.
+
+| Surface           | Proposed contract                                                                                                                                                                                                                                         |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Authentication    | `/game` handshake `auth.accessToken`; verified Supabase subject becomes the principal. Neither socket IDs nor client player IDs establish identity.                                                                                                       |
+| Session           | `session.sync` returns `idle`, `queued`, `lobby`, `starting`, or `match`. `session.update` carries the same canonical union; `match.found` is a notification, never the only discovery mechanism.                                                         |
+| Ordering scope    | Session responses/events carry `serverInstanceId`, opaque current `sessionId`, and increasing `admissionRevision`. Revisions are comparable only within that authenticated scope. Gameplay additionally retains per-match `stateVersion`.                 |
+| Quick Match       | `queue.join` and `queue.leave`; General only, compatible mode and Classic difficulty, configured server region. Challenge has no selected difficulty. One outstanding admission per user.                                                                 |
+| Private room HTTP | Authenticated `POST /v1/rooms`, `GET /v1/rooms/:code` preview, `POST /v1/rooms/:code/join`, and `DELETE /v1/rooms/:code`. Preview reveals frozen public settings before explicit acceptance. Delete cancels for host or leaves for guest before starting. |
+| Lobby             | `lobby.ready({lobbyId, ready})`; both current connected members consent to the frozen settings. Lobby identity is distinct from a committed match ID.                                                                                                     |
+| Gameplay          | Existing `answer.submit`, `round.audio_ready`, `round.replay_used` payloads, with identity bound by the server. Lobby readiness never implies audio readiness.                                                                                            |
+| Committed update  | One viewer-specific `match.update {matchId, stateVersion, snapshot, batches}`. Validate matching identities, ordered batch versions, and final snapshot version. Keep each batch atomic, including final result plus completion.                          |
+| Recovery          | `match.sync({matchId,lastSeenVersion})` returns a full viewer snapshot in an update with no historical batches. Version gaps do not require fabricated deltas. `session.sync` recovers a match whose ID the client never received.                        |
+| ACKs              | Existing counted ACK is authoritative and immutable. Separate typed transport failures from gameplay rejections; transport timeout means unknown outcome, not a rejected answer.                                                                          |
+| Clock             | Correlated `clock.ping`/`clock.pong`, server receive/send UTC samples and client monotonic elapsed time. Samples affect display only; clients cannot supply authoritative receipt/deadline timestamps.                                                    |
+| Errors            | Allowlisted codes and request IDs, including `SESSION_REPLACED`, unauthenticated/unauthorized, invalid request, admission conflict, unavailable content/storage, and retryable transport failure. No raw internal exceptions.                             |
+
+Mutation requests use bounded UUID request IDs and immutable payload fingerprints within the admission coordinator. Repeating an unresolved lobby/queue mutation returns its pending/canonical outcome; it cannot create a second match. Resolved admission-request retention is bounded to the lobby lifetime, with a documented retry-window error after expiry. This cache is separate from the durable counted-attempt ledger. All 48 counted acknowledgements remain retained, including terminal recovery; rejected attempt IDs remain reusable with a fresh receipt.
+
+Session updates, HTTP replies and `match.found` must not overwrite a newer admission. Match updates are accepted only for the current match and authenticated generation. A current full snapshot can advance state without replaying obsolete audio/presentation effects; same-version effects are deduplicated separately from snapshot state.
+
+## 3. Authentication, authorization and receipt order
+
+- Verify signature, trusted configured issuer/JWKS, audience, algorithm allowlist, UUID subject, expiry/not-before, and authenticated user role. Reject service-role/API-key credentials, malformed tokens and untrusted token-supplied key URLs. Bound JWT size, verification time, key fetching and refresh behavior.
+- Use the existing Supabase architecture with asymmetric signing keys. No new authentication provider or custom production token issuer. CI uses locally signed tokens and a local JWKS fixture through explicit dependency injection; production cannot select a test identity override.
+- Perform asynchronous JWT verification at handshake/reconnect. For an established socket, synchronously check principal expiry, current session generation, membership, payload limits and rate limits, then immediately admit the command to the actor. Do not await JWKS, database or network work between a valid gameplay packet and actor enqueue.
+- Preserve already-enqueued valid commands when a session is replaced. Reject later frames from the old generation and ignore its delayed disconnect callback. `SESSION_REPLACED` stops the displaced client's automatic reconnect loop.
+- Token expiry closes authorization and disconnects the current session; reconnect requires a fresh valid token. HTTP mutations verify authentication and current session binding, then enter the same admission coordinator as socket mutations.
+- Socket.IO middleware runs once per connection, so handshake validation alone is insufficient for long-lived authorization. Membership and current-session guards remain mandatory on every operation.
+- Restrict origins where applicable, packet sizes, handshake/request rates and invite guessing; CORS is not authorization. Publish viewer projections individually, not one viewer's private snapshot to the entire match room. Redact tokens, invite codes, signed URLs, submitted guesses, answers before result, and private lookup mappings from logs/errors.
+
+One active backend and one actor per live match remain the deployment model. No Redis, distributed matchmaking service or automatic Socket.IO connection-state replay is introduced. Explicit synchronization is required after each reconnect.
+
+## 4. Admission, persistence and lifecycle
+
+### Admission and durable discovery
+
+A single process-wide coordinator owns queue tickets, lobby membership and user reservations across HTTP and sockets. Reserve both selected users synchronously before content checks or database calls. Freeze mode/category/difficulty at invite creation; reject self-join, duplicate admission, expired/full rooms, incompatible queues and unavailable coverage.
+
+Queues and unstarted lobbies are ephemeral. Restart cancels them; a new `serverInstanceId` forces resynchronization. Proposed bounded development settings: ten-minute invite lifetime; queued disconnect cancels its ticket; lobby disconnect clears both readiness flags, allows ten seconds to reconnect, then cancels the lobby without points. These settings do not change the accepted active-match policy.
+
+Once both players are ready, admission becomes `starting`. Both reservations survive disconnect, cancellation, token expiry and uncertain COMMIT until the original creation operation is proven committed or rolled back. Never create a second match to compensate for a lost database response. If creation commits after a disconnect/cancel, apply the staged connection lifecycle to that committed actor; do not claim cancellation rolled it back or invent a winner. Preserve original trusted lifecycle receipt/deadline ordering through this delayed-creation path; never grant a fresh ten seconds merely because the database reply arrived late.
+
+Add one backend-only table, `player_match_bindings(player_id PRIMARY KEY, last_match_id NOT NULL)`, with composite membership FK `(last_match_id, player_id)` referencing `match_participants(match_id, player_id)`. In the existing owner-guarded create transaction:
+
+1. Acquire schema-scoped transaction advisory locks for both player identities in stable UUID order, after the owner lock and before match locks. This handles previously absent binding rows without nullable placeholders.
+2. Reject replacement of a binding to a nonterminal match.
+3. Create the match and both participants, and repoint both bindings atomically.
+4. On rollback, leave old bindings and all authoritative state unchanged.
+
+The binding supports authorized discovery after lost `match.found`, including a subsequent restart interruption. A terminal historical binding does not block a new queue/lobby/match and never overrides a newer admission. Explicit authorized old-match snapshot/ACK recovery remains available after the binding points to a later match. This does not require durable queue, lobby, profile or catalog tables.
+
+### Actor/runtime integration
+
+- Acquire the accepted PostgreSQL owner lease, interrupt old unfinished matches, and complete recovery before multiplayer readiness/admission. Reuse the existing fenced transaction store, uncertain-COMMIT reconciliation and immutable terminal outcomes.
+- Registry construction is single-flight. Live actors are created only from freshly confirmed match creation; old live checkpoints are not resumed across server monotonic timelines. Terminal records support authorized read-only recovery.
+- Add a private actor bootstrap lifecycle seam for disconnect/reconnect receipts buffered during `starting`. Freeze the initial state/clock anchor before asynchronous creation work and retain it through retries of that creation operation. Bootstrap applies only to a confirmed, current-owner, fresh round-zero record. Validate the entire ordered buffer before activation (known members, nondecreasing safe receipt times within the checkpoint watermark and captured bootstrap time); assign ingress sequences inside the actor. Atomically install the complete lifecycle backlog before timers or ordinary commands, then append one wake at captured current time. A timely buffered reconnect must be processed before this wake; otherwise an already-expired grace interrupts immediately. Registry awaits `bootstrapReady`, which resolves only when the final bootstrap wake has committed or been reconciled, before leaving `starting`, publishing match-ready or preparing the first round. Actor construction or a `reconcile()` call returning while paused is not completion. Additional lifecycle receipts arriving during handoff append exactly once to the actor FIFO; there is no gap between coordinator and actor ownership. Bound storage to 31 accepted reconnects per player while starting (at most 126 logical transitions including final disconnects); reject excess reconnects before session replacement, never evict accepted receipts or lose a final disconnect. No client timestamps, fresh grace on delayed COMMIT, changed engine rule, or old-process clock replay is permitted.
+- A bounded recovery loop drives paused actors' `reconcile()` calls. During unresolved storage operations, do not free admission, emit tentative points or assert a command failed definitively. Socket response timeouts do not cancel committed/queued work.
+- Sync must follow the actor's ordered wake/reconnect boundary and confirmed state. A pending storage operation yields a pending/unavailable transport result, not a speculative snapshot that enables play. Recovery never bypasses the FIFO.
+- Drive first and subsequent round preparation through a server-only source interface. Select/prepare once per expected match/round; discard late source results after phase change, termination or ownership loss. Propose a configurable 1,500 ms result hold from confirmed committed result, consistent with the approved short feedback overlay; this is a development default, not a finalized launch timing.
+- No public round-preparation command. Production source unavailable means clear refusal/interruption under existing rules; test fixtures are injected only into tests. Runtime coverage checks include every reachable Challenge level before admitting that configuration.
+- Publish only confirmed committed updates. Publication failure triggers snapshot/ACK recovery, never another score calculation. Do not split atomic batches into independently version-deduplicated network events.
+- Active-match disconnect grace stays 10,000 ms with deadlines continuing and unresolved loss producing interrupted/no match winner. It starts at trusted server-observed disconnect, not an unknowable physical network-cut instant. Heartbeat detection delay is measured separately. Preserve the original disconnect receipt through slow database processing.
+- Shutdown/owner loss stops admission and stale publishers, closes jobs and sockets, and uses accepted restart recovery; it never creates a phantom forfeit win.
+
+## 5. Mobile implementation boundary
+
+Implement six headless modules: token provider, connection, authoritative consumer, commands, lobby API/state and clock estimator. Token acquisition is injected; refresh/cancellation is tested without adding social-provider UI. The connection uses the existing configured API endpoint and subscribes before synchronization. Do not put tokens in URLs, public environment variables, previews or committed fixtures.
+
+Consumer states distinguish disconnected/authenticating/synchronizing/connected/replaced and idle/queued/lobby/starting/match admission. Disable gameplay while synchronization or authorization is unresolved. Do not let Socket.IO automatically flush offline gameplay commands; retain exact unresolved answer payloads explicitly, recover counted ACKs from snapshots, then retry only unresolved deliveries with their original IDs. A definitive rejection does not become an automatic new gameplay attempt.
+
+The client never awards points, advances levels, grants attempts/replays, or changes deadlines. Clock offset/RTT samples are bounded and invalidated on suspension or clock discontinuity; sample quality is not scoring evidence. Audio-ready requires actual decoded exact-version audio in Increment 04, not receipt of a prepare event.
+
+No changes to routes, four approved screens, preview fixtures, themes, UI primitives or keyboard behavior in this increment. Headless status/effect outputs must support later accessible announcements without announcing a secret spelling early. Existing accessibility/UI checks remain regressions; new native gameplay accessibility evidence belongs to the actual Increment 04/05 bindings.
+
+## 6. Dependencies and compatibility
+
+Registry metadata checked October 30, 2026 at 04:46 UTC (October 29 locally):
+
+| Package            | Proposed exact pin | Publication UTC         | Placement                              |
+| ------------------ | ------------------ | ----------------------- | -------------------------------------- |
+| `socket.io`        | `4.8.4`            | 2026-09-25 08:51:53.015 | Server runtime                         |
+| `socket.io-client` | `4.8.4`            | 2026-09-25 08:35:02.910 | Mobile runtime; server test dependency |
+| `jose`             | `6.2.13`           | 2026-10-20 06:21:48.616 | Server JWT verification                |
+
+All proposed direct releases satisfy 24 hours. Latest `jose 6.2.14`, published 2026-10-29 09:51:45.094 UTC, was not yet eligible at the check; do not use it merely because it is latest. Recheck eligibility and registry metadata at implementation time. At planning time no installation/full transitive resolution had occurred; direct-package age alone was not proof of graph eligibility. During implementation pnpm accepted the entire graph under the unchanged policy. Subsequent frozen installations also passed. pnpm must continue to accept the entire graph with `minimumReleaseAge: 1440`, existing build-script allowlist and strict engines unchanged. If it cannot, report the exact blocker rather than add an exception.
+
+Keep Node 24.13.0, pnpm 12.15.0, Expo SDK 58, React Native, Fastify, TypeScript, Zod and PostgreSQL/Drizzle pins unchanged. Socket.IO v4 server/client compatibility and React Native usage are documented upstream; project compatibility still requires TypeScript, Jest, Expo checks and production exports. No new native module, Supabase client SDK, crypto polyfill, test framework or rate-limit dependency is proposed.
+
+References: [Socket.IO delivery guarantees](https://socket.io/docs/v4/delivery-guarantees/), [middleware lifetime](https://socket.io/docs/v4/middlewares/), [client compatibility](https://socket.io/docs/v4/client-installation/), [React Native usage](https://socket.io/how-to/use-with-react-native), [Supabase JWT verification](https://supabase.com/docs/guides/auth/jwts), [jose](https://github.com/panva/jose). Registry evidence: [server](https://registry.npmjs.org/socket.io), [client](https://registry.npmjs.org/socket.io-client), [jose](https://registry.npmjs.org/jose).
+
+Live Supabase verification remains an environment gate: an existing configured project with asymmetric signing keys and two test-user access tokens is needed before claiming provider/device acceptance. CI needs no external account. No project, auth provider, hosted database, TLS service or paid build is provisioned by this plan. Physical phones will also require a reachable backend/database and permitted transport; Expo's Metro connection alone does not supply those.
+
+## 7. Exact proposed file ownership
+
+Paths below are repository-relative to `/Users/hasanzahran/workspace/TypeDuel`. Each row is an exclusive write boundary; proposed new files do not yet exist. A necessary deviation is recorded by the lead before ownership changes.
+
+| Owner                                  | Files                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lead — shared freeze                   | `packages/contracts/src/realtime.ts`; `packages/contracts/src/index.ts`; `packages/contracts/tests/realtime.test.ts`; initial interface addition in `apps/server/src/db/types.ts` (then explicitly handed to Backend)                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Lead — dependencies/config/integration | `apps/server/package.json`; `apps/mobile/package.json`; `pnpm-lock.yaml`; `.github/workflows/ci.yml`; `docs/M1_INCREMENT_03_PLAN.md`; `docs/IMPLEMENTATION_PLAN.md`; `README.md`                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Backend — auth/transport               | `apps/server/src/auth/verifier.ts`; `apps/server/src/socket/server.ts`; `apps/server/src/socket/session.ts`; `apps/server/src/socket/handlers.ts`; `apps/server/src/socket/limits.ts`; `apps/server/src/http/rooms.ts`                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Backend — runtime/admission            | `apps/server/src/matchmaking/coordinator.ts`; `apps/server/src/game/registry.ts`; `apps/server/src/game/lifecycle.ts`; `apps/server/src/game/source.ts`; `apps/server/src/game/actor.ts` (private ordered bootstrap seam only); `apps/server/src/runtime.ts`; `apps/server/src/app.ts`; `apps/server/src/server.ts`; `apps/server/src/http/health.ts`; `apps/server/src/config/env.ts`; `apps/server/.env.example`                                                                                                                                                                                                                             |
+| Backend — persistence                  | `apps/server/src/db/types.ts` after freeze handoff; `apps/server/src/db/schema.ts`; `apps/server/src/db/match-store.ts`; `apps/server/drizzle/0001_player_match_bindings.sql`; `apps/server/drizzle/meta/0001_snapshot.json`; `apps/server/drizzle/meta/_journal.json`                                                                                                                                                                                                                                                                                                                                                                         |
+| Backend — focused tests                | `apps/server/tests/auth/verifier.test.ts`; `apps/server/tests/socket/session.test.ts`; `apps/server/tests/socket/limits.test.ts`; `apps/server/tests/matchmaking/coordinator.test.ts`; `apps/server/tests/game/registry.test.ts`; `apps/server/tests/game/lifecycle.test.ts`; `apps/server/tests/game/actor.test.ts` (bootstrap validation/order and store-interface fixture maintenance); `apps/server/tests/http/rooms.test.ts`; `apps/server/tests/app.test.ts`; `apps/server/tests/integration/backend/store.test.ts`; `apps/server/tests/integration/backend/admission.test.ts`; `apps/server/tests/integration/backend/bindings.test.ts` |
+| Mobile — six modules and tests         | `apps/mobile/src/auth/token-provider.ts`; `apps/mobile/src/auth/token-provider.test.ts`; `apps/mobile/src/features/match/connection.ts`; `apps/mobile/src/features/match/connection.test.ts`; `apps/mobile/src/features/match/consumer.ts`; `apps/mobile/src/features/match/consumer.test.ts`; `apps/mobile/src/features/match/commands.ts`; `apps/mobile/src/features/match/commands.test.ts`; `apps/mobile/src/features/match/lobby.ts`; `apps/mobile/src/features/match/lobby.test.ts`; `apps/mobile/src/features/match/clock.ts`; `apps/mobile/src/features/match/clock.test.ts`                                                           |
+| QA — independent acceptance            | `apps/server/tests/integration/transport-qa/auth.test.ts`; `apps/server/tests/integration/transport-qa/admission.test.ts`; `apps/server/tests/integration/transport-qa/receipt-order.test.ts`; `apps/server/tests/integration/transport-qa/delivery.test.ts`; `apps/server/tests/integration/transport-qa/recovery.test.ts`; `apps/server/tests/integration/transport-qa/privacy.test.ts`; `apps/server/tests/integration/transport-qa/support/harness.ts`; `apps/server/tests/integration/transport-qa/support/tokens.ts`; `apps/server/tests/integration/transport-qa/support/transport-child.ts`                                            |
+| Mobile/Content — assigned handoff docs | Mobile: `docs/M1_MOBILE_INTEGRATION.md`. Content: `docs/M1_CONTENT_PREPARATION.md`. Lead integrates those commits; neither role edits shared contracts or backend files.                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+
+Existing pure engine/rules/gameplay schemas are not scheduled for changes. Database test fixture adjustments caused by the store-interface addition belong to the owner of the existing test file; lead assigns any cross-boundary maintenance explicitly rather than having two agents edit it concurrently. No downloaded agent ZIP/setup directory enters commits.
+
+## 8. Parallel execution and integration checkpoints
+
+After approval, create integration branch `codex/m1-03-realtime` from latest accepted main, carrying the approved planning document. Lead commits the contract/interface/dependency freeze first. Each implementation worktree starts at that freeze commit, uses its own real dependency installation, and never shares writable `node_modules` with another worktree.
+
+| Branch                | Worktree under `/Users/hasanzahran/workspace/TypeDuel-worktrees/` | Assignment                                                 |
+| --------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------- |
+| `codex/m1-03-backend` | `m1-03-backend`                                                   | Backend files above, focused tests and migrations          |
+| `codex/m1-03-mobile`  | `m1-03-mobile`                                                    | Headless mobile modules/tests and mobile handoff           |
+| `codex/m1-03-qa`      | `m1-03-qa`                                                        | Independent real-socket/real-PostgreSQL tests              |
+| `codex/m1-03-content` | `m1-03-content`                                                   | Content worksheet only; use the next available worker slot |
+
+With three worker slots, Backend, Mobile and QA code concurrently after freeze. Content preparation rotates into the first completed worker slot, as in this planning review. The lead continues shared integration, dependency verification and cross-review.
+
+1. **Freeze checkpoint:** shared schemas/types, session/error/receipt semantics, store lookup interface, test runtime factory and approved dependency pins. All roles consume one commit; no competing protocol implementations.
+2. **Parallel checkpoint:** Backend builds auth/admission/registry/store; Mobile builds against contract fixtures; QA builds local JWKS + real two-client harness against the frozen runtime seam. Content completes the editorial worksheet independently.
+3. **Backend review:** QA reviews uncertain creation, binding locks, privacy and session replacement. Backend reviews adversarial assumptions. Lead resolves routine disagreements without reopening approved architecture.
+4. **Integration:** contracts first, Backend implementation/migration, Mobile consumer, then independent QA acceptance and final documentation. Keep each agent's meaningful commits distinct; no merge to main.
+5. **Final gate:** full validation and both GitHub CI jobs pass at the exact final PR head. Open a reviewable Increment 03 PR with actual evidence and remaining provider/native limitations. Increment 04 implementation still requires approval.
+
+## 9. Tests and acceptance criteria
+
+This table records the approved planning gates. Actual implementation verification is recorded in section 13; accepted Increment 02 evidence remains historical evidence, not proof of the new transport.
+
+| Gate                  | Required evidence                                                                                                                                                                                                                                                  |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Contracts             | Strict shapes, immutable setup, session-union/version scopes, invalid identities/extra fields, malformed atomic batches and viewer-specific envelopes rejected. No canonical word or private catalog key added to transport.                                       |
+| Authentication        | Real signed-token/JWKS tests: absent/invalid/expired/future token, wrong issuer/audience/algorithm/role/subject, unknown/rotated key, bounded JWKS failure, expiry during connection and refresh/reconnect. No test verifier accepted by production configuration. |
+| Authorization         | Third user cannot join full room, access another match/ACK, submit as another player or use a superseded session. Invalid traffic consumes no gameplay attempt.                                                                                                    |
+| Admission             | Simultaneous HTTP/socket joins and cancel/ready races; self-join/expiry/guess limits; immutable setup; incompatible queue isolation; A+B versus A+C and reversed player order produce one match without deadlock. Rollback restores both old bindings.             |
+| Creation recovery     | Lost create response and `match.found`; unknown COMMIT; disconnect/cancel during starting; process death before/after commit. Reservations stay blocked until resolution; recovery finds exactly the committed match or proves rollback. No phantom match/win.     |
+| Gameplay over sockets | Two independent real clients plus real PostgreSQL finish five-round winners and eight-round draws with synthetic server-only sources. Classic/Challenge, attempts/replays and durable state agree. Concurrent correct answers yield exactly one committed point.   |
+| Receipt fairness      | Earlier valid frame blocked behind slow storage retains original order relative to later answers and timer wake. No async auth/membership lookup reorders established gameplay. Delayed creation lifecycle cannot reset reconnect grace.                           |
+| Retry/recovery        | Lost ACK, duplicate deliveries, stale ACK, changed payload conflict, fresh rejected-ID evaluation, all 48 counted ACKs including terminal history. Repointing a player's binding does not erase authorized historical ACKs.                                        |
+| Publication/privacy   | Rollback and unresolved COMMIT never publish a point; post-commit publication loss recovers by snapshot. Private viewer data stays private; guesses/keys/tokens/invites/signed URLs and pre-result answers absent from logs and public errors.                     |
+| Reconnect/lifecycle   | Before/at/after 10,000 ms; server timers continue; session replacement and stale disconnect callbacks; expired token; failed synchronization; owner loss and child-process restart yield interrupted/no winner. Terminal results remain immutable.                 |
+| Consumer              | Out-of-order HTTP/sync/found messages, instance/session rollover, version gaps, duplicate/same-version effects, atomic result/completion, old-round audio effects, replacement reconnect loops and no offline command flood.                                       |
+| Latency/clock         | Controlled packet/ACK drops, asymmetric delays, connection closes and delayed DB commits; RTT jitter, wall-clock changes and foreground resampling. No client timing sample changes scoring. Actual heartbeat detection time is reported separately from grace.    |
+| Runtime jobs          | Exactly one next-round preparation; no late source/timer callback after terminal/ownership change; unavailable coverage refuses start rather than selecting a hidden fallback.                                                                                     |
+
+Mandatory delayed-creation traces, measured on the frozen creation clock: disconnect at 100 ms, reconnect at 10,099 ms, creation confirmation at 20,000 ms preserves the timely reconnect; reconnect at 10,100 ms, or no reconnect, interrupts with no winner. Test buffer saturation without losing the final disconnect, malformed/old-owner bootstrap rejection, and uncertain bootstrap commits before enabling gameplay.
+
+Run pinned-toolchain frozen installation, formatting, lint/boundary/token checks, TypeScript, all unit/mobile tests, real PostgreSQL integration tests with the existing digest-pinned PostgreSQL 18.6 CI service, server/contracts builds, web/iOS/Android production exports and fixture isolation, Expo dependency validation and Expo Doctor. Extend existing CI discovery to include the real socket tests; no new cloud service or large local database installation. Missing local database tooling does not justify claiming local DB passes: run the real suite in the approved CI service and identify that environment explicitly.
+
+Acceptance requires all gates above and green CI at the final head, plus an unchanged visual/UI diff. Distinguish locally signed test-token authentication from a live Supabase smoke test; distinguish Expo export success from actual native networking/audio/accessibility acceptance. Outstanding provider/device setup can remain an explicitly documented Increment 04 prerequisite; it must not be described as tested.
+
+## 10. Content decisions and parallel Increment 04 preparation
+
+Content performed a textual editorial review. Replace `fish`: the ordinary English homophone `phish` violates the PRD's ambiguity exclusion ([Merriam-Webster](https://www.merriam-webster.com/dictionary/phish)). Proposed replacement `cup` has an ordinary single-pronunciation entry suitable for further Level-1 review ([Merriam-Webster](https://www.merriam-webster.com/dictionary/cup)).
+
+Proposed eight-word set: **cat, dog, cup, milk, desk, hand, drum, frog**. This is an agent editorial recommendation, not owner approval, exhaustive homophone clearance or listening evidence. Review selected US vowel/consonant clarity, especially dog/frog vowels, milk/desk/hand final clusters and drum/frog initial clusters. Preserve the brainstormed provenance, references and actual reviewer decisions; dictionary recordings are not selected game assets.
+
+Minimum Increment 04 assets are eight distinct approved General/Classic/Level-1 word/audio pairs: private canonical spelling and explicitly approved variants; approved provenance; one approved consistent US-English voice/configuration; eight exact immutable MP3 versions; actual decoded durations, final-byte sizes and SHA-256; opaque nonsemantic names/URLs/tags; human listening decisions; and physical iOS/Android decode/playback evidence. A byte change requires a new version and renewed measurements/listening. Do not invent these records or generate any audio under this planning approval.
+
+Work that can proceed independently once its preparation scope is approved:
+
+- Content: complete the eight-row editorial decision register and a bounded eight-clip generation request for separate owner approval; no large batches or provider provisioning.
+- Backend: specify source/catalog eligibility and authenticated opaque audio delivery interfaces against the accepted source boundary. Inventory available backend/database/TLS/auth environments read-only; any provisioning needs separate approval.
+- Mobile: plan exact-version preload/decode, common scheduled initial playback, two conservative replays and minimal Game/Results bindings/dev-only harness. Keep approved visual primitives and early keyboard/layout/accessibility requirements.
+- QA: prepare two-device measurement/evidence sheets and failure cases for slow commit, late delivery, decode failure, audio interruption, Bluetooth and backgrounding. Agree the common late-start fail/reschedule-or-interrupt policy before physical gameplay acceptance; no individual timer extensions.
+
+Dependency chain: Increment 03 authenticated admission/recovery + owner-approved eight-clip generation and listening + permitted reachable test environment -> Increment 04 asset delivery/preflight/minimal bindings -> first recorded physical two-phone match. Full lobby polish remains 05. Competitive keyboard assistance remains an M1 acceptance requirement; evaluation can be prepared independently, but no custom keyboard is selected or implemented here.
+
+## 11. Original approval checkpoint — approved
+
+Approve this bounded Increment 03 implementation, its three proposed dependency pins (subject to the full 24-hour policy), the transactional participant-binding migration, the transport/session decisions and exclusive worktree assignments. Routine coding, fixes and cross-agent reviews then proceed within this scope. Paid services, audio generation, visual changes, custom keyboard implementation, Increment 04 implementation and merging remain outside this approval.
+
+## 12. Approved implementation freeze
+
+Planning commit `36a5375` is preserved on integration branch `codex/m1-03-realtime`. The owner approved implementation, the three dependency pins, participant-binding migration, worktree ownership and routine fixes. No Increment 04 implementation, audio generation, provisioning or merge is authorized.
+
+The executable freeze is `packages/contracts/src/realtime.ts`. It uses lower-case admission `kind`, scoped previews, and `Reply<T> = {ok:true,data:T} | {ok:false,error:{code,requestId}}`. Public transport errors carry no arbitrary message. Gameplay error text is the existing static engine message. Gameplay requests retain their frozen shape; transport errors for them use a null requestId. Control mutations include `expectedAdmissionRevision`, checked after an existing identical request cache lookup and before executing a new mutation. This fences expired-cache retries without a tombstone store. Mutation HTTP requests supply current opaque session identity in `x-typeduel-session-id`; authenticate the JWT independently. Room preview replies carry session scope and `preview`. `match.update` carries session scope as well as the committed update; nested session-match admission uses an unscoped committed update. HTTP POST join and DELETE use `MutationSchema`; read-only control requests use `RequestSchema`.
+
+Private runtime interface frozen for Backend/QA:
+
+```ts
+createGameRuntime({
+  database, owner, store?, clock?, verifier, source,
+  config?, hooks?,
+}): Promise<{
+  app: FastifyInstance;
+  listen(options?: {host?: string; port?: number}): Promise<string>;
+  reconcile(): Promise<void>;
+  close(): Promise<void>;
+}>
+```
+
+- `database: Database`, `owner: OwnerLease`, `store?: DiscoverableMatchStore` (extends existing MatchStore with `readLatestForPlayer(playerId): Promise<PersistedMatch|null>`), and `clock?: ActorClock` reuse accepted adapters. Runtime initialization completes `interruptOrphans` before readiness. The caller owns database/lease teardown; runtime close stops its own actors/jobs/sockets/Fastify only.
+- `TokenVerifier.verifyAccessToken(token): Promise<{playerId:string,expiresAtUtcMs:number}>`. `createJwtVerifier({issuer,audience,key:JWTVerifyGetKey,nowUtcMs?})` exercises real signatures with injected clock and local JWKS in tests. Production `createSupabaseVerifier({supabaseUrl})` derives trusted HTTPS issuer/JWKS and bounded remote-key settings; it cannot enable a test verifier from environment configuration.
+- `RoundSource.checkAvailability(setup): Promise<boolean>` and `nextRound({matchId,setup,roundNumber,level,usedWordIds}): Promise<RoundDescriptor>`. Real production source remains unavailable in 03; only tests supply synthetic descriptors. The registry freezes the initial clock anchor before asynchronous creation work.
+- Runtime config exposes server region, lobby lifetime/grace, result hold, reconciliation interval, source timeout, allowed origins and maxPlayers. Server-owned configuration never permits a client-selected grace, score or deadline.
+- Runtime hooks expose existing actor/store fault boundaries; a synchronous outbound filter `{kind:'event'|'ack',event,playerId,payload} -> 'send'|'drop'`; and a synchronous `afterGameplayAdmission({event,playerId,matchId,attemptId?})` observer immediately after invoking actor admission, before awaiting it. No raw text or client timing authority enters the observer. Tests that use it to prove queued ordering run below queue capacity; dispatch observation alone is not proof that a capacity-rejected command was admitted.
+- During bootstrap, the actor installs all validated original lifecycle receipts followed by the catch-up wake. `bootstrapReady` waits for its confirmed outcome, not merely actor construction or a paused reconciliation call. Additional lifecycle events hand off once without a coordinator/actor gap.
+
+Backend owns implementation of these private seams. QA owns independent integration tests and physical two-device preparation; Mobile owns its frozen six-module surface and Increment 04 binding strategy; Content owns only the candidate worksheet. Lead owns changes to the shared wire freeze.
+
+## 13. Implementation verification and review handoff
+
+Status: integrated implementation verified; ready for owner review subject to the exact final PR-head checks. Code verification passed at `bd198eb` in [GitHub Actions run 41009831862](https://github.com/hasanzahran/typeduel/actions/runs/41009831862). M0 visuals, dependency policies and the accepted engine rules are preserved. No Increment 04 implementation, audio generation, provisioning or merge has occurred.
+
+### Contributions and refinements
+
+- Lead preserved planning commit `36a5375`, froze strict shared transport contracts and the discoverable-store interface, installed only approved pins under the workspace security policy, implemented/reviewed the asymmetric JWT verifier and integrated isolated worktrees.
+- Backend implemented the participant-binding migration, atomic admission, durable discovery, authenticated HTTP/Socket.IO runtime, session fencing, bounded ingress, buffered original lifecycle receipts during uncertain creation, actor bootstrap/reconciliation and post-commit publication.
+- Mobile implemented six headless modules with tests: token-provider injection, connection/session recovery, committed-state consumer, deliberate gameplay commands, room/queue controls and display-only clock estimates. Screens, routes, theme, keyboard and audio code remain unchanged.
+- QA independently implemented real PostgreSQL plus real Socket.IO/JWKS tests, fault injection and child-process crash/fencing tests. Existing tests now use distinct participants for independent matches, as required by exclusive participant bindings.
+- Content prepared the eight-candidate editorial worksheet and bounded future recording request; all owner editorial, voice, rights, listening, asset-byte and physical-playback decisions remain pending. QA and Mobile prepared device and minimal-binding strategies only.
+
+Cross-review caught and corrected a UTF-16 length-bound regression in the shared answer schema, a pending-admission mutation race, and an injected-clock receiver loss at transport limiters. The clock defect was exposed by the first integrated PostgreSQL transport run; it was not disguised by changing the valid method-based clock fixture. Further corrections preserve control-request correlation on rejection, deny unauthorized sync before actor work, enforce lobby expiry despite delayed callbacks, recover lifecycle scheduling after publication failure, retain confirmed creation reservations on bootstrap failure, and reclaim only safe expired disconnected admission records. Mobile clock sampling uses one correlated ACK completion path. QA explicitly ticks the initial round timer and drains due timer replacements at the same trusted instant in its manual-clock harness. A bounded regression covers replacement, duplicate ticks and non-firing time advancement; production timing rules are unchanged. No rule or visual-design change was required.
+
+### Environment and evidence boundaries
+
+All local verification uses Node 24.13.0 and pnpm 12.15.0. Separate worktrees have independent frozen installations. The integration checkout contains owner-provided untracked agent setup files; these remain untouched and excluded. Complete formatting/build validation runs in a clean committed validation worktree rather than changing ignores or formatting the setup package.
+
+No local `psql` or Docker executable is available on PATH. `apps/server/.env` and `apps/mobile/.env` are absent in the integration checkout. Real database tests run in the previously approved GitHub Actions PostgreSQL 18.6 service, pinned to `sha256:979bccfde35445db618c65107d27d08c6c21339d8dc3ad4c830c6633947be0e4`, with fsync, full-page writes and synchronous commit verified on. No local or external database was provisioned.
+
+Actual transport tests use locally signed credentials and a local JWKS provider, real network sockets and private synthetic descriptors. No live Supabase project or physical phone has been authenticated in this increment. The production source refuses admission while reviewed audio coverage is unavailable. Export success cannot establish native networking, audio synchronization or competitive keyboard fairness.
+
+### Completed automated gates
+
+| Check                                                | Actual result                                                                                                                                                                                                                                                                                      |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dependency resolution / frozen installation          | Approved Socket.IO/server+client 4.8.4 and jose 6.2.13; pnpm accepted the full graph. Clean CI independently verified all **1,102 lockfile entries** under unchanged `minimumReleaseAge: 1440`, strict engines and build-script allowlist. Frozen installation passed locally and in both CI jobs. |
+| Formatting / lint / boundaries / tokens / TypeScript | Passed locally in the clean validation worktree and in CI. No approved visual primitives or security-policy files changed.                                                                                                                                                                         |
+| Contracts                                            | **25 passed**.                                                                                                                                                                                                                                                                                     |
+| Server unit/component                                | **119 passed**. Includes actual network-socket component tests with an in-memory store; these are distinct from PostgreSQL evidence.                                                                                                                                                               |
+| Mobile                                               | **54 passed**, eight Jest suites. Headless adapters plus preserved existing component tests.                                                                                                                                                                                                       |
+| Real PostgreSQL and Socket.IO integration            | **102 passed**, 12 files: 47 existing/binding cases, 54 independent transport cases and one manual-clock regression. Actual PostgreSQL 18.6 durability settings verified by CI.                                                                                                                    |
+| Builds / production exports                          | Contracts and server builds; web, iOS and Android production exports passed. Release scan excludes M0 fixture markers and new private multiplayer fixture prefixes. These are exports, not signed native binaries.                                                                                 |
+| Expo                                                 | Dependency check reports up to date; Expo Doctor **20/20** passed.                                                                                                                                                                                                                                 |
+| GitHub CI                                            | Both `quality` and `postgres-integration` passed at implementation head `bd198eb` in run 41009831862. Final documentation/PR-head checks are verified after this report commit and linked in the PR handoff.                                                                                       |
+
+Total: **300 automated tests passed**. No integration test was skipped for missing local infrastructure. Full local quality validation passed at `0e9ab6b`; subsequent fixture/release-guard edits passed formatting/frozen installation and the complete CI suite at `bd198eb`. The clean final documentation head is also validated before review handoff.
+
+Earlier integration runs exposed the clock receiver defect and manual-clock simulation faults described above; those runs are retained in Actions history and are not counted as passes. No security guard, production rate limit, reconnect boundary or assertion of authoritative scoring was weakened to obtain the passing result. Final protocol semantics preserve original receipt order, all 48 counted acknowledgements, before/at/after ten-second grace, post-commit-only points, immutable terminal outcomes and viewer-private snapshots.
+
+No material Increment 03 implementation blocker remains after final-head checks pass. Existing provider/device/audio prerequisites below are deliberately separate from this increment's automated acceptance. M1 itself is not complete.
+
+### Remaining prerequisites for the first physical pair
+
+After Increment 03 review and explicit Increment 04 approval, Backend can implement reviewed private catalog/opaque audio delivery while Mobile implements exact-version preflight, playback and minimal approved Game/Results bindings. QA can independently implement asset/failure scenarios and execute the prepared physical-device protocol once builds and devices exist. Content editorial and bounded recording approval can proceed independently of coding.
+
+Required inputs: owner approval of candidate spelling/variants and a consistent voice; authorization for at most eight initial recordings and their listening review; actual immutable assets with measured duration/hash/size; an existing approved reachable backend/private database and asymmetric-auth test accounts; physical iPhone and Android access; and an agreed shared late-start/interruption policy. None is silently replaced by synthetic fixtures. Broader mobile flow polish remains Increment 05. Gboard assistance and the reviewed competitive keyboard solution remain M1 acceptance requirements; no custom keyboard is implemented here.
+
+### Exact changed files
+
+69 tracked files relative to accepted `origin/main`; owner-provided untracked setup files are excluded.
+
+```text
+README.md
+apps/mobile/package.json
+apps/mobile/src/auth/token-provider.test.ts
+apps/mobile/src/auth/token-provider.ts
+apps/mobile/src/features/match/clock.test.ts
+apps/mobile/src/features/match/clock.ts
+apps/mobile/src/features/match/commands.test.ts
+apps/mobile/src/features/match/commands.ts
+apps/mobile/src/features/match/connection.test.ts
+apps/mobile/src/features/match/connection.ts
+apps/mobile/src/features/match/consumer.test.ts
+apps/mobile/src/features/match/consumer.ts
+apps/mobile/src/features/match/lobby.test.ts
+apps/mobile/src/features/match/lobby.ts
+apps/server/.env.example
+apps/server/drizzle/0001_player_match_bindings.sql
+apps/server/drizzle/meta/0001_snapshot.json
+apps/server/drizzle/meta/_journal.json
+apps/server/package.json
+apps/server/src/app.ts
+apps/server/src/auth/verifier.ts
+apps/server/src/config/env.ts
+apps/server/src/db/match-store.ts
+apps/server/src/db/schema.ts
+apps/server/src/db/types.ts
+apps/server/src/game/actor.ts
+apps/server/src/game/lifecycle.ts
+apps/server/src/game/registry.ts
+apps/server/src/game/source.ts
+apps/server/src/http/rooms.ts
+apps/server/src/matchmaking/coordinator.ts
+apps/server/src/runtime.ts
+apps/server/src/server.ts
+apps/server/src/socket/handlers.ts
+apps/server/src/socket/limits.ts
+apps/server/src/socket/server.ts
+apps/server/src/socket/session.ts
+apps/server/tests/auth/verifier.test.ts
+apps/server/tests/game/actor.test.ts
+apps/server/tests/game/registry.test.ts
+apps/server/tests/game/runtime-fixtures.ts
+apps/server/tests/http/rooms.test.ts
+apps/server/tests/integration/backend/bindings.test.ts
+apps/server/tests/integration/backend/store.test.ts
+apps/server/tests/integration/qa/atomicity.test.ts
+apps/server/tests/integration/qa/receipt-order.test.ts
+apps/server/tests/integration/qa/support/harness.ts
+apps/server/tests/integration/transport-qa/admission.test.ts
+apps/server/tests/integration/transport-qa/auth.test.ts
+apps/server/tests/integration/transport-qa/delivery.test.ts
+apps/server/tests/integration/transport-qa/privacy.test.ts
+apps/server/tests/integration/transport-qa/receipt-order.test.ts
+apps/server/tests/integration/transport-qa/recovery.test.ts
+apps/server/tests/integration/transport-qa/support/harness.ts
+apps/server/tests/integration/transport-qa/support/tokens.ts
+apps/server/tests/integration/transport-qa/support/transport-child.ts
+apps/server/tests/matchmaking/coordinator.test.ts
+docs/IMPLEMENTATION_PLAN.md
+docs/M1_CONTENT_PREPARATION.md
+docs/M1_INCREMENT_03_DEVICE_PROTOCOL.md
+docs/M1_INCREMENT_03_PLAN.md
+docs/M1_MOBILE_INTEGRATION.md
+packages/contracts/src/gameplay.ts
+packages/contracts/src/index.ts
+packages/contracts/src/realtime.ts
+packages/contracts/tests/gameplay.test.ts
+packages/contracts/tests/realtime.test.ts
+pnpm-lock.yaml
+scripts/check-release.mjs
+```
+
+### Preserved implementation history
+
+These commits precede the final verification-document commit; agent changes were integrated without rewriting main or squashing away review fixes.
+
+```text
+36a5375 docs(m1): coordinate authenticated multiplayer increment 03 plan
+f30b7d9 feat(contracts): freeze authenticated realtime protocol and integration seams
+fb574d4 feat(server): verify bounded authenticated Supabase JWT principals
+2d672f7 fix(contracts): enforce approved UTF-16 answer length limit
+512dece feat(server): persist player discovery and bootstrap ordered connection receipts
+f8a3fbf test(db): isolate independent match participant fixtures
+5f209e2 test(auth): isolate signature and algorithm rejection assertions
+fb4519f feat(server): add authenticated room and match socket runtime
+4547968 feat(mobile): add authenticated headless match consumer
+5b91f8d test(transport): verify authenticated multiplayer recovery and privacy
+9b43e8c fix(server): serialize pending admission mutations per player
+ec722b2 test(transport): scope discovery waits to current admission
+e3abfb5 test(transport): preserve final disconnect under starting churn
+6c93e9e test(transport): await committed trusted reconnect outcome
+ed10b8d test(transport): verify concurrent wins and paused commit publication
+53e0aee docs(content): prepare eight candidate editorial and audio review
+7e5c3d3 fix(server): preserve clock receiver in transport rate limits
+b7c0d9d fix(server): guard transport correlation and lifecycle boundaries
+a670bd4 fix(mobile): complete clock samples only from correlated ACKs
+0e9ab6b fix(server): reclaim expired disconnected admission records
+98d6bd6 test(transport): tick initial round source scheduling explicitly
+a703a6b test(transport): reconcile uncertain creation without sync flooding
+1926694 test(release): exclude multiplayer secret fixtures from exports
+bd198eb test(transport): drain due clock replacements at the same tick
+```

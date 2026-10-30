@@ -342,7 +342,10 @@ describe('real PostgreSQL atomicity and commit ambiguity', () => {
     async (kind) => {
       const s = (scenario = await createScenario());
       const before = s.record;
-      const initial = createFixtureMatch({ matchId: randomUUID() });
+      const initial = createFixtureMatch({
+        matchId: randomUUID(),
+        participants: [randomUUID(), randomUUID()],
+      });
       const candidate = applyCommand(
         before.state,
         {
@@ -400,7 +403,10 @@ describe('real PostgreSQL atomicity and commit ambiguity', () => {
 
   it('rolls back each initial match and participant write without creating a partial match', async () => {
     const s = (scenario = await createScenario());
-    const initial = createFixtureMatch({ matchId: randomUUID() });
+    const initial = createFixtureMatch({
+      matchId: randomUUID(),
+      participants: [randomUUID(), randomUUID()],
+    });
     const before = await durableRows(s.testDb.pool);
     let succeeded = false;
     for (let failAt = 1; failAt < 10; failAt += 1) {
@@ -452,7 +458,10 @@ describe('real PostgreSQL atomicity and commit ambiguity', () => {
     s.record = await s.store.createMatch({
       owner: s.owner,
       operationId: randomUUID(),
-      state: createFixtureMatch({ matchId: randomUUID() }),
+      state: createFixtureMatch({
+        matchId: randomUUID(),
+        participants: [randomUUID(), randomUUID()],
+      }),
     });
     const before = await durableRows(s.testDb.pool);
     const descriptor = createRoundDescriptor(s.record.state, {

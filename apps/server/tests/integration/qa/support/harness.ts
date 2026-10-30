@@ -190,12 +190,18 @@ export class ManualClock implements ActorClock {
     if (at < this.now) throw new Error('Test clock cannot move backwards');
     this.now = at;
     if (fire) {
-      const due = [...this.callbacks.entries()]
-        .filter(([, timer]) => timer.at <= at)
-        .sort((a, b) => a[1].at - b[1].at);
-      for (const [id, timer] of due) {
-        if (this.callbacks.delete(id)) timer.callback();
+      // A callback may cancel/rearm another already-due timer. Re-read after
+      // every callback so the replacement runs at this same trusted time.
+      for (let dispatched = 0; dispatched < 1_000; dispatched += 1) {
+        const due = [...this.callbacks.entries()]
+          .filter(([, timer]) => timer.at <= at)
+          .sort((a, b) => a[1].at - b[1].at)[0];
+        if (!due) return;
+        const [id, timer] = due;
+        this.callbacks.delete(id);
+        timer.callback();
       }
+      throw new Error('Test clock exceeded due callback dispatch bound');
     }
   }
 }

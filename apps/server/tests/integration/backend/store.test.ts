@@ -42,7 +42,10 @@ afterAll(async () => {
 });
 describe('PostgreSQL durable store baseline', () => {
   it('migrates privately and enforces non-null terminal outcome invariants in SQL', async () => {
-    const state = createFixtureMatch({ matchId: randomUUID() });
+    const state = createFixtureMatch({
+      matchId: randomUUID(),
+      participants: [randomUUID(), randomUUID()],
+    });
     await store.createMatch({ owner, operationId: randomUUID(), state });
     await expect(
       database.pool.query(
@@ -66,7 +69,10 @@ describe('PostgreSQL durable store baseline', () => {
     let persisted = await store.createMatch({
       owner,
       operationId: randomUUID(),
-      state: createFixtureMatch({ matchId: randomUUID() }),
+      state: createFixtureMatch({
+        matchId: randomUUID(),
+        participants: [randomUUID(), randomUUID()],
+      }),
     });
     const descriptor = createRoundDescriptor(persisted.state, {
       roundId: randomUUID(),
@@ -123,7 +129,10 @@ describe('PostgreSQL durable store baseline', () => {
     expect(loaded?.state.participants[0].score).toBe(1);
   });
   it('rolls back physical writes and reconciles a lost real COMMIT response', async () => {
-    const state = createFixtureMatch({ matchId: randomUUID() });
+    const state = createFixtureMatch({
+      matchId: randomUUID(),
+      participants: [randomUUID(), randomUUID()],
+    });
     const failing = createMatchStore({
       database,
       hooks(point, context) {
@@ -164,7 +173,10 @@ describe('PostgreSQL durable store baseline', () => {
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const state = createFixtureMatch({ matchId: randomUUID() });
+    const state = createFixtureMatch({
+      matchId: randomUUID(),
+      participants: [randomUUID(), randomUUID()],
+    });
     const operationId = randomUUID();
     const blocked = createMatchStore({
       database,
@@ -191,7 +203,10 @@ describe('PostgreSQL durable store baseline', () => {
     expect((await pending).lastOperationId).toBe(operationId);
   });
   it('does not resolve an older owner operation as a new owner write', async () => {
-    const state = createFixtureMatch({ matchId: randomUUID() });
+    const state = createFixtureMatch({
+      matchId: randomUUID(),
+      participants: [randomUUID(), randomUUID()],
+    });
     const operationId = randomUUID();
     await store.createMatch({ owner, operationId, state });
     await owner.release();

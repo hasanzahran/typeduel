@@ -14,6 +14,9 @@ for (const file of files) {
   for (const marker of [
     'TYPE_DUEL_M0_FIXTURE_SENTINEL',
     'Development preview · Mock data',
+    'qa-secret-',
+    'qa-variant-',
+    'qa-private-guess-',
   ])
     if (content.includes(marker))
       throw new Error('Development fixture leaked: ' + file);
