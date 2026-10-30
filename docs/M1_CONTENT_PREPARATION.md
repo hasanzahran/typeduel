@@ -16,16 +16,16 @@ These candidate spellings belong to an editorial proposal, not a deployed catalo
 
 The words were brainstormed for review, not extracted from a verified licensed dataset. Level 1 is provisional for every row. Every row requires an explicit search/review for confusing homophones, context-dependent readings, regional pronunciation/spelling and difficulty suitability. The observations below are review prompts, not findings that a word is unambiguous.
 
-| Candidate | Proposed use | Individual listening/ambiguity checks | Rights/provenance | Editorial/voice review | Approved asset, duration, checksum |
-| --- | --- | --- | --- | --- | --- |
-| cat | General, Level 1 | Standalone pronunciation and clear final consonant; check unintended homophone ambiguity. | Pending | Pending | None; unmeasured; absent |
-| dog | General, Level 1 | US-English vowel realization and intelligibility across target listeners; check regional variation. | Pending | Pending | None; unmeasured; absent |
-| fish | General, Level 1 | Final sound clarity; assess whether unchanged singular/plural spelling causes instructional ambiguity. | Pending | Pending | None; unmeasured; absent |
-| milk | General, Level 1 | Consonant cluster, vowel realization and possible regional syllable variation in the selected voice. | Pending | Pending | None; unmeasured; absent |
-| desk | General, Level 1 | Final consonant cluster remains complete, audible and unclipped. | Pending | Pending | None; unmeasured; absent |
-| hand | General, Level 1 | Final consonant remains audible in isolated playback; check reductions in the chosen voice. | Pending | Pending | None; unmeasured; absent |
-| drum | General, Level 1 | Initial consonant cluster is intelligible, without an unintended added introductory sound. | Pending | Pending | None; unmeasured; absent |
-| frog | General, Level 1 | Initial cluster and US-English vowel consistency; assess regional listener comprehension. | Pending | Pending | None; unmeasured; absent |
+| Candidate | Proposed use     | Individual listening/ambiguity checks                                                                  | Rights/provenance | Editorial/voice review | Approved asset, duration, checksum |
+| --------- | ---------------- | ------------------------------------------------------------------------------------------------------ | ----------------- | ---------------------- | ---------------------------------- |
+| cat       | General, Level 1 | Standalone pronunciation and clear final consonant; check unintended homophone ambiguity.              | Pending           | Pending                | None; unmeasured; absent           |
+| dog       | General, Level 1 | US-English vowel realization and intelligibility across target listeners; check regional variation.    | Pending           | Pending                | None; unmeasured; absent           |
+| fish      | General, Level 1 | Final sound clarity; assess whether unchanged singular/plural spelling causes instructional ambiguity. | Pending           | Pending                | None; unmeasured; absent           |
+| milk      | General, Level 1 | Consonant cluster, vowel realization and possible regional syllable variation in the selected voice.   | Pending           | Pending                | None; unmeasured; absent           |
+| desk      | General, Level 1 | Final consonant cluster remains complete, audible and unclipped.                                       | Pending           | Pending                | None; unmeasured; absent           |
+| hand      | General, Level 1 | Final consonant remains audible in isolated playback; check reductions in the chosen voice.            | Pending           | Pending                | None; unmeasured; absent           |
+| drum      | General, Level 1 | Initial consonant cluster is intelligible, without an unintended added introductory sound.             | Pending           | Pending                | None; unmeasured; absent           |
+| frog      | General, Level 1 | Initial cluster and US-English vowel consistency; assess regional listener comprehension.              | Pending           | Pending                | None; unmeasured; absent           |
 
 No named-category tag is approved by this table, even when a topic association appears obvious. General is the virtual pool of all eligible approved words. Do not infer accepted variants, pronunciation approval or rights clearance from familiarity with a word.
 
@@ -35,14 +35,14 @@ For each candidate record an editor's accept/reject/replace decision, rationale,
 
 Field names below are preparation templates, not frozen database schemas. Backend owns persistence/migrations; content owns the assigned editorial records. Use absent/null values for unperformed measurements rather than guessed numbers.
 
-| Record | Fields to capture |
-| --- | --- |
-| Provenance and rights | `sourceName`, `sourceUrlOrReference`, `sourceVersion`, `retrievedAt`, `rightsBasis`, `licenseReference`, `attributionRequired`, `distributionRestrictions`, `reviewer`, `reviewedAt`, `decision`, supporting evidence reference. |
-| Word editorial | Private `wordId`, canonical NFC spelling, approved variants, locale, difficulty, approved named-category memberships, provenance reference, homophone/context/regional notes, status, reviewer/date. |
-| Generation configuration | Approved US-English voice identifier, engine, language, speech settings, SSML/lexicon configuration and version, configuration hash, tool version, authorized batch reference. These values are not selected or approved here. |
-| Immutable asset | Private word/asset association, opaque public asset identity and version, random nonsemantic storage key, MP3 format, final byte length, SHA-256 of final bytes, measured decoded duration, measurement tool/version, processing notes, listening status, reviewer/date. |
-| Device evidence | Exact asset version/checksum, build commit/runtime, device/OS, audio route, network conditions, actual playback start/end observations, decode/preload failures, listener feedback and disposition. |
-| Coverage report | Category and level, unique approved words with approved current audio, pending/rejected/missing/regeneration counts, runtime eligibility and beta threshold result. |
+| Record                   | Fields to capture                                                                                                                                                                                                                                                        |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Provenance and rights    | `sourceName`, `sourceUrlOrReference`, `sourceVersion`, `retrievedAt`, `rightsBasis`, `licenseReference`, `attributionRequired`, `distributionRestrictions`, `reviewer`, `reviewedAt`, `decision`, supporting evidence reference.                                         |
+| Word editorial           | Private `wordId`, canonical NFC spelling, approved variants, locale, difficulty, approved named-category memberships, provenance reference, homophone/context/regional notes, status, reviewer/date.                                                                     |
+| Generation configuration | Approved US-English voice identifier, engine, language, speech settings, SSML/lexicon configuration and version, configuration hash, tool version, authorized batch reference. These values are not selected or approved here.                                           |
+| Immutable asset          | Private word/asset association, opaque public asset identity and version, random nonsemantic storage key, MP3 format, final byte length, SHA-256 of final bytes, measured decoded duration, measurement tool/version, processing notes, listening status, reviewer/date. |
+| Device evidence          | Exact asset version/checksum, build commit/runtime, device/OS, audio route, network conditions, actual playback start/end observations, decode/preload failures, listener feedback and disposition.                                                                      |
+| Coverage report          | Category and level, unique approved words with approved current audio, pending/rejected/missing/regeneration counts, runtime eligibility and beta threshold result.                                                                                                      |
 
 Document the actual source and applicable source/provider conditions before distribution; record any required attribution and restrictions. A source link alone is not an approval record. This worksheet makes no legal determination and contains no provider credentials or cost authorization.
 
@@ -77,11 +77,11 @@ Before enabling the initial set, verify:
 
 ## 6. Coverage gates and roadmap dependencies
 
-| Gate | Requirement and practical limit |
-| --- | --- |
-| First restricted real match | Eight approved General/Classic/Level-1 pairs. Demonstrates one playable configuration, not Challenge or all five levels/categories. |
-| Full M1 runtime coverage | Every enabled category/level and Challenge-reachable pool satisfies the approved minimum of eight eligible nonrepeating candidates. Classic can remain at any selected level; Challenge must be supported through Level 5. |
-| Current beta content gate | At least 30 approved playable words per named category per level: four named categories × five levels × 30 = 600 approved category-level memberships. Shared tags can reuse one recording; General derives from all approved words. |
+| Gate                        | Requirement and practical limit                                                                                                                                                                                                     |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| First restricted real match | Eight approved General/Classic/Level-1 pairs. Demonstrates one playable configuration, not Challenge or all five levels/categories.                                                                                                 |
+| Full M1 runtime coverage    | Every enabled category/level and Challenge-reachable pool satisfies the approved minimum of eight eligible nonrepeating candidates. Classic can remain at any selected level; Challenge must be supported through Level 5.          |
+| Current beta content gate   | At least 30 approved playable words per named category per level: four named categories × five levels × 30 = 600 approved category-level memberships. Shared tags can reuse one recording; General derives from all approved words. |
 
 The tiny first-match set must be explicitly limited to a development configuration, with any required environment-only prototype override reviewed. It does not satisfy the stronger beta gate or authorize hiding promised categories from a finished release. Candidate coverage and actual approved-audio coverage must be reported separately.
 

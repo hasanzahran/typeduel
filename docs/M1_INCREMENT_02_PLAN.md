@@ -73,7 +73,7 @@ routine coding and fixes require no additional owner approval. Pause before 03.
 Owner-approved exact pins: `drizzle-orm@0.45.4`, `pg@8.23.1`,
 `drizzle-kit@0.31.11`, `@types/pg@8.23.1`. pnpm accepted the full install with
 `minimumReleaseAge: 1440`, engine strictness and build-script allowlist unchanged.
-Frozen installation and final checks still require completion below.
+The initial frozen installation passed. Final integrated checks still require completion below. Drizzle Kit brings deprecated esbuild-kit development tooling; no additional build scripts were authorized. The existing mobile Metro peer warning (0.88.0 installed versus a 0.88.1 peer request) also exists in the merged baseline and is not changed by this increment.
 
 Use reviewed generated migrations, never schema push or automatic startup
 migration. Private tables: owner control, categories, matches, match participants,

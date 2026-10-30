@@ -55,15 +55,15 @@ Surface authentication expiry, unavailable service, invalid membership and unrec
 
 ## 5. Phase presentation and audio fairness
 
-| Canonical phase | Presentation and actions |
-| --- | --- |
+| Canonical phase   | Presentation and actions                                                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `PREPARING_ROUND` | Preparing next word; preload and decode exact approved asset; submissions/replays disabled; readiness only after success. |
-| `COUNTDOWN` | Get ready; display time until scheduled playback; evaluate native keyboard pre-opening without enabling submissions. |
-| `PLAYING_WORD` | Listen carefully; initial playback once for this round/asset; submissions disabled. |
-| `ACTIVE_TYPING` | Time remaining; at most three counted submissions and two local replays; no timer extension. |
-| `ROUND_RESULT` | Read-only spelling reveal and winner/no-point feedback; played level and next level stay distinct. |
-| `COMPLETED` | Authoritative win/loss/draw and final round result; hide unmeasured statistics. |
-| `ABORTED` | Match interrupted; historical scores may remain, with no winner or celebration. |
+| `COUNTDOWN`       | Get ready; display time until scheduled playback; evaluate native keyboard pre-opening without enabling submissions.      |
+| `PLAYING_WORD`    | Listen carefully; initial playback once for this round/asset; submissions disabled.                                       |
+| `ACTIVE_TYPING`   | Time remaining; at most three counted submissions and two local replays; no timer extension.                              |
+| `ROUND_RESULT`    | Read-only spelling reveal and winner/no-point feedback; played level and next level stay distinct.                        |
+| `COMPLETED`       | Authoritative win/loss/draw and final round result; hide unmeasured statistics.                                           |
+| `ABORTED`         | Match interrupted; historical scores may remain, with no winner or celebration.                                           |
 
 Checking, reconnecting and audio failure are local presentation overlays, not client-owned game phases. The visual timer uses the server schedule plus measured clock offset and local monotonic elapsed time. Refresh sampling after foreground/resume. Local expiry can disable input but cannot invent a timeout result. Device timestamps never award points or compensate answer latency.
 
@@ -75,11 +75,11 @@ Replay playback starts locally without waiting for telemetry ACK. Keep spent rep
 
 The following are proposed later file assignments, not permission to implement them in increment 02. Shared package/configuration edits remain lead-owned. Versions and compatibility of proposed dependencies must be verified at their implementation checkpoint; preserve Expo baseline and dependency-age policy.
 
-| Increment | Proposed mobile files | Dependency and review gate |
-| --- | --- | --- |
-| 03: bounded connection/consumer | `apps/mobile/src/features/match/connection.ts`, `consumer.ts`, `commands.ts`, `clock.ts`, corresponding `.test.ts` files | Auth/session/sync/update contracts and committed actor boundary; approved `socket.io-client` dependency. Two independent clients converge; no screen changes. |
+| Increment                         | Proposed mobile files                                                                                                                                                                                                                                | Dependency and review gate                                                                                                                                                                        |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 03: bounded connection/consumer   | `apps/mobile/src/features/match/connection.ts`, `consumer.ts`, `commands.ts`, `clock.ts`, corresponding `.test.ts` files                                                                                                                             | Auth/session/sync/update contracts and committed actor boundary; approved `socket.io-client` dependency. Two independent clients converge; no screen changes.                                     |
 | 04: audio and first playable pair | `apps/mobile/src/audio/adapter.ts`, `preload.ts`, `scheduler.ts`, `replay.ts` and tests; `apps/mobile/src/features/match/GameScreen.tsx`, `ResultsScreen.tsx` and tests; `apps/mobile/src/dev/RealMatchHarness.tsx`; `apps/mobile/app/dev-match.tsx` | Reviewed eight-asset General/Classic/Level-1 set, authorized delivery, approved SDK-compatible audio/cache/integrity capability. Physical iPhone versus Android complete a restricted real match. |
-| 05: complete flow | Explicitly assigned Home/Setup/Game/Results route wiring, lobby/queue/invite views and necessary shared UI primitive bindings | Broader modes/categories and navigation; owner reviews any required visual change. |
+| 05: complete flow                 | Explicitly assigned Home/Setup/Game/Results route wiring, lobby/queue/invite views and necessary shared UI primitive bindings                                                                                                                        | Broader modes/categories and navigation; owner reviews any required visual change.                                                                                                                |
 
 Increment 04 explicitly brings forward only the minimum Game/Results bindings from 05. Reuse the approved layout and components; do not import fixture-driven preview state into real gameplay. The development-only harness authenticates two real test participants and opens an authorized server-created restricted match. It uses no mock opponent, local scoring or fake-success fallback. Guard the route/module using the existing development-only loading pattern and verify production exports exclude the harness and test configuration. Unsupported rematch/provider flows must not pretend to work.
 
@@ -87,15 +87,15 @@ This sequence permits the first real physical pair by the end of 04 without wait
 
 ## 7. Acceptance matrix and evidence
 
-| Area | Required tests/evidence |
-| --- | --- |
-| Committed updates | Rollback publishes nothing; lost publication syncs to durable state; multi-batch delayed wake; empty/private batches; cross-match or inconsistent envelopes rejected. |
+| Area                    | Required tests/evidence                                                                                                                                                                                        |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Committed updates       | Rollback publishes nothing; lost publication syncs to durable state; multi-batch delayed wake; empty/private batches; cross-match or inconsistent envelopes rejected.                                          |
 | State/effect separation | Snapshot before same-version batch; duplicate update; older batch after newer snapshot; atomic final result/completion; missing intermediate feedback followed by latest snapshot; no historical audio replay. |
-| Commands | Lost counted ACK, exact retry, stale rejection after acceptance, historical ACK after newer counters, definitive rejection followed by a deliberate new request, terminal result before ACK. |
-| Session/recovery | Replacement session; old socket disconnect/command; token expiry; unauthorized sync; reconnect at 9,999/10,000 ms; server restart interruption without phantom win. |
-| Audio/timing | Same asset/checksum, decode readiness, bad/missing/expired access, slow commit, delayed start, speakers/headphones/Bluetooth, interruptions/backgrounding, two local replays and no extensions. |
-| Native input/layout | Compact and tall iPhone/Android, keyboard open, larger text, timer/replay/input/Submit reachable, early focus, Submit/Send, hardware input, predictive bars and alternate IME behavior. |
-| Accessibility/fairness | VoiceOver/TalkBack, switch access, focus restoration, touch targets, reduced motion; prediction/autocorrect/spellcheck/autofill/paste/dictation/text replacement and English/diacritics evaluated honestly. |
+| Commands                | Lost counted ACK, exact retry, stale rejection after acceptance, historical ACK after newer counters, definitive rejection followed by a deliberate new request, terminal result before ACK.                   |
+| Session/recovery        | Replacement session; old socket disconnect/command; token expiry; unauthorized sync; reconnect at 9,999/10,000 ms; server restart interruption without phantom win.                                            |
+| Audio/timing            | Same asset/checksum, decode readiness, bad/missing/expired access, slow commit, delayed start, speakers/headphones/Bluetooth, interruptions/backgrounding, two local replays and no extensions.                |
+| Native input/layout     | Compact and tall iPhone/Android, keyboard open, larger text, timer/replay/input/Submit reachable, early focus, Submit/Send, hardware input, predictive bars and alternate IME behavior.                        |
+| Accessibility/fairness  | VoiceOver/TalkBack, switch access, focus restoration, touch targets, reduced motion; prediction/autocorrect/spellcheck/autofill/paste/dictation/text replacement and English/diacritics evaluated honestly.    |
 
 First-pair evidence records exact commit/build, device/OS/runtime, IME, font scale, network/audio route, screenshots, measured playback timings and matching client/database outcomes. Add same-platform pairs and broader network conditions afterward. M0 owner evidence and production exports are not proof of M1 native gameplay. Gboard assistance remains an M1 acceptance issue; custom keyboard implementation is unapproved.
 
