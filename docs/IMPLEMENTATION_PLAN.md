@@ -2,7 +2,7 @@
 
 **Date:** October 29, 2026
 
-**Status:** M0 formally accepted by the owner; PR #2 merged. M1 architecture and staged scope approved; increment 01 is planned and awaits explicit implementation approval.
+**Status:** M0 formally accepted by the owner; PR #2 merged. M1 architecture and staged scope approved; increment 01 implementation is owner-approved and in progress; acceptance remains pending.
 
 **Sources of truth:** TypeDuel PRD v0.4, System Design v1.2, UI/UX Design v1.0, plus the owner-approved M1 scope and development reconnect policy recorded below.
 
@@ -52,7 +52,7 @@ Acceptance:
 
 **Goal:** Two devices complete a real match with matching authoritative state and durable outcomes, using reviewed prerecorded audio and the approved Classic/Challenge rules.
 
-**First review:** [Increment 01 — contracts and deterministic game core](M1_INCREMENT_01_PLAN.md). No application code is authorized until the owner approves this increment.
+**First review:** [Increment 01 — contracts and deterministic game core](M1_INCREMENT_01_PLAN.md). The owner approved this bounded increment and all three implementation commits; stop for review before increment 02.
 
 | Increment                             | Bounded deliverable                                                                                                                                              | Review checkpoint                                                                                                |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -121,9 +121,9 @@ Deliverables: real iOS/Android builds via Expo EAS, cross-platform two-phone smo
 
 Acceptance: zero inconsistent completed-match scores; all three gameplay restrictions exercised; sound and timer correct; app policies/privacy/account deletion met; product owner approves before any production publish.
 
-## Immediate next action — increment 01 approval
+## Immediate next action — implement and verify increment 01
 
-Review [M1_INCREMENT_01_PLAN.md](M1_INCREMENT_01_PLAN.md): exact files, zero-new-dependency approach, deterministic command/time semantics, contract privacy, acceptance tests and commit checkpoints. Application implementation remains paused until explicit owner approval. This planning update changes documentation only; it does not install packages, start external services or alter M0 UI/UX.
+Review [M1_INCREMENT_01_PLAN.md](M1_INCREMENT_01_PLAN.md): exact files, zero-new-dependency approach, deterministic command/time semantics, contract privacy, acceptance tests and commit checkpoints. The owner has approved the reconciled contract freeze, isolated backend/QA worktrees and all three Increment 01 implementation commits. Run full acceptance at the integrated head and stop before Increment 02. No new dependencies, services, UI changes or automatic main merge are authorized.
 
 ## Useful official documentation
 

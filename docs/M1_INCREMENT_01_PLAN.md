@@ -1,6 +1,6 @@
 # M1 increment 01 — gameplay contracts and deterministic server core
 
-**Status:** Proposed; awaiting explicit owner approval before application-code changes.
+**Status:** Increment 01 implementation approved by the owner, including reconciled contracts and coordinated ownership. Shared contracts frozen for implementation; acceptance checks pending.
 
 **Date:** October 29, 2026.
 
@@ -22,21 +22,23 @@ The engine computes authoritative deadlines and due transitions. A future actor 
 
 Paths are relative to the repository root. New files below do not exist yet.
 
-| File                                        | Action                      | Responsibility                                                                                                                                  |
-| ------------------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/contracts/src/setup.ts`           | Add                         | Move existing mode/category/difficulty/setup schemas unchanged into a leaf module, avoiding circular imports when gameplay schemas reuse them   |
-| `packages/contracts/src/gameplay.ts`        | Add                         | Strict public commands, acknowledgements, discriminated snapshots, round schedules/results, completion and interruption schemas; inferred types |
-| `packages/contracts/src/index.ts`           | Modify                      | Re-export setup and gameplay schemas while preserving existing M0 exports and health/error contracts                                            |
-| `packages/contracts/tests/gameplay.test.ts` | Add                         | Valid/invalid packets, authority boundaries, phase discriminators, ranges, cross-field invariants and answer exposure rules                     |
-| `apps/server/src/game/types.ts`             | Add                         | Private state, trusted command context, server-selected round descriptor, transition output and injected clock types                            |
-| `apps/server/src/game/rules.ts`             | Add                         | Server rule configuration, normalization and deterministic score/progression/match-completion helpers                                           |
-| `apps/server/src/game/engine.ts`            | Add                         | Pure state transitions, readiness/timelines, attempt deduplication, scoring, expiry, reconnect grace and interruption                           |
-| `apps/server/src/game/snapshot.ts`          | Add                         | Participant-authorized, explicit allowlist projections of internal state into public schemas                                                    |
-| `apps/server/tests/game/fixtures.ts`        | Add                         | Deterministic IDs, clocks and server-only synthetic word/audio metadata for unit tests; no MP3s or approved-content claims                      |
-| `apps/server/tests/game/engine.test.ts`     | Add                         | Rule, timing, ordering, normalization, idempotency, progression, terminal-state and reconnect tests                                             |
-| `apps/server/tests/game/snapshot.test.ts`   | Add                         | Both-player state agreement, secret redaction, result reveal, snapshot immutability and membership checks                                       |
-| `docs/M1_INCREMENT_01_PLAN.md`              | Update after implementation | Record actual files/checks/results and review status; never pre-mark acceptance passes                                                          |
-| `docs/IMPLEMENTATION_PLAN.md`               | Update after implementation | Record increment status and next review gate                                                                                                    |
+| File                                         | Action                      | Responsibility                                                                                                                                  |
+| -------------------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/contracts/src/setup.ts`            | Add                         | Move existing mode/category/difficulty/setup schemas unchanged into a leaf module, avoiding circular imports when gameplay schemas reuse them   |
+| `packages/contracts/src/gameplay.ts`         | Add                         | Strict public commands, acknowledgements, discriminated snapshots, round schedules/results, completion and interruption schemas; inferred types |
+| `packages/contracts/src/index.ts`            | Modify                      | Re-export setup and gameplay schemas while preserving existing M0 exports and health/error contracts                                            |
+| `packages/contracts/tests/gameplay.test.ts`  | Add                         | Valid/invalid packets, authority boundaries, phase discriminators, ranges, cross-field invariants and answer exposure rules                     |
+| `apps/server/src/game/types.ts`              | Add                         | Private state, trusted command context, server-selected round descriptor, transition output and injected clock types                            |
+| `apps/server/src/game/rules.ts`              | Add                         | Server rule configuration, normalization and deterministic score/progression/match-completion helpers                                           |
+| `apps/server/src/game/engine.ts`             | Add                         | Pure state transitions, readiness/timelines, attempt deduplication, scoring, expiry, reconnect grace and interruption                           |
+| `apps/server/src/game/snapshot.ts`           | Add                         | Participant-authorized, explicit allowlist projections of internal state into public schemas                                                    |
+| `apps/server/tests/game/fixtures.ts`         | Add                         | Deterministic IDs, clocks and server-only synthetic word/audio metadata for unit tests; no MP3s or approved-content claims                      |
+| `apps/server/tests/game/engine.test.ts`      | Add                         | Rule, timing, ordering, normalization, idempotency, progression, terminal-state and reconnect tests                                             |
+| `apps/server/tests/game/adversarial.test.ts` | Add                         | QA-owned receipt ordering, full 48-entry retention, retry floods and boundary/terminal tests                                                    |
+| `docs/ARCHITECTURE_DECISIONS.md`             | Append                      | Lead records approved M1 contract/authority decisions without rewriting M0 history                                                              |
+| `apps/server/tests/game/snapshot.test.ts`    | Add                         | Both-player state agreement, secret redaction, result reveal, snapshot immutability and membership checks                                       |
+| `docs/M1_INCREMENT_01_PLAN.md`               | Update after implementation | Record actual files/checks/results and review status; never pre-mark acceptance passes                                                          |
+| `docs/IMPLEMENTATION_PLAN.md`                | Update after implementation | Record increment status and next review gate                                                                                                    |
 
 Existing `packages/contracts/tests/contracts.test.ts`, mobile tests and server health tests stay in the suite unchanged as regression coverage. Any additional application file or dependency discovered to be necessary must be explained at the review checkpoint rather than silently expanding the increment.
 
@@ -54,7 +56,7 @@ Reuse existing `MatchSetupSchema` and its General-only Quick Match rule. Keep th
 
 Add the minimal gameplay protocol needed by this core:
 
-- `answer.submit`: strict `{matchId, roundId, attemptId, text}`. UUID identities; bounded non-whitespace text (proposed maximum 128 UTF-16 code units). No client timestamp, score, player identity, level or deadline fields. Malformed commands do not consume attempts.
+- `answer.submit`: strict `{matchId, roundId, attemptId, text}`. UUID identities; bounded non-whitespace text (maximum 120 UTF-16 code units, measured before normalization). No client timestamp, score, player identity, level or deadline fields. Malformed commands do not consume attempts.
 - `round.audio_ready`: round identity and the exact prepared public asset version, resolved within an authorized match context. Readiness is advisory and cannot choose a word or schedule.
 - `round.replay_used`: round identity and replay sequence 1 or 2; used for idempotent bookkeeping only. Future legitimate-client playback is not gated on its network acknowledgement.
 - Answer acknowledgement: stable status and private attempts remaining, without echoing the guessed text or expected spelling. Define explicit statuses for incorrect/correct, not typing, closed/stale round, exhausted attempts, invalid command, unauthorized member and conflicting attempt-ID reuse.
@@ -96,7 +98,7 @@ The engine returns **candidate state and events**, never socket broadcasts or co
 2. Resolve a previously processed key `(matchId, roundId, playerId, attemptId)` before rejecting a retry solely because the round has since closed. Replay its original acknowledgement without another attempt/point. Retain history for the match lifetime; cross-process durability is later work.
 3. Reject reuse of an ID with a different payload as an idempotency conflict, without counting it. A new ID with the same answer text is a new counted submission.
 4. For a new submission, require connected membership, the correct round and server receipt within `[typingStart, deadline)`, with at least one attempt remaining.
-5. Count the valid submission, normalize with NFC/trim/case folding appropriate to English, and compare only against the server's canonical spelling or approved variants. Do not strip internal whitespace, punctuation or accents. Incorrect attempts return remaining count without a hint.
+5. Count the valid submission, normalize with NFC → trim → locale-independent lowercase → NFC, and compare only against the server's canonical spelling or approved variants. Do not strip internal whitespace, punctuation or accents. Incorrect attempts return remaining count without a hint.
 6. The first correct ordered submission closes the round and adds exactly one point. Later or concurrent-order losers cannot add a second point. A duplicate command alone never bumps the authoritative version or emits another scoring event.
 7. Keep five normal rounds even if a lead appears mathematically decisive. If tied after five, allow at most three extra rounds, ending immediately when scores differ. If still tied after round eight, complete as a draw.
 8. Classic remains at its chosen level. Challenge begins at 1 and advances by one after a winning round (maximum 5); scoreless rounds do not advance it. Preserve the just-finished round's played level and represent the next level separately. Category stays fixed in normal rounds and sudden death.
@@ -148,7 +150,7 @@ The focused suites run while developing; the full suite runs once the increment 
 
 The current planning commit changes only this document and `IMPLEMENTATION_PLAN.md`.
 
-After explicit increment approval, use three small implementation commits:
+Owner approval covers all three small implementation commits without routine intermediate permission requests:
 
 1. `feat(contracts): define strict public gameplay schemas` — setup extraction, contracts and validation/privacy tests; run contract tests and consumer type checks.
 2. `feat(server): add deterministic authoritative match core` — private types/rules/reducer and timing/attempt/progression/reconnect tests; run server and contract suites.
@@ -164,3 +166,18 @@ Each commit is reviewable; do not intentionally commit a failing intermediate st
 - Database/auth setup may require local tooling and resource approval; no such installation is necessary for increment 01. No services are provisioned by approving this code-only increment.
 - Gboard prediction assistance remains open for M1. Evaluate the accessible approach before implementation; the first increment neither changes input UX nor claims to resolve that issue.
 - The exact owner-tested iPhone model/runtime/commit and screenshots remain M0 documentation-only gaps. New M1 device testing must record actual build provenance.
+
+## 12. Approved contract freeze and implementation ownership
+
+The owner approved implementation after the coordinated backend/mobile/QA/content review. Lead owns shared schemas, contract tests, canonical documents and integration. Backend exclusively owns the four server implementation files, `fixtures.ts` and `engine.test.ts`. QA exclusively owns `snapshot.test.ts` and `adversarial.test.ts` in an isolated worktree. Mobile/content prepare future requirements without application changes. Integrate contracts → engine → QA tests. No package, lockfile, UI, paid service or Increment 02 work is authorized.
+
+- Only counted `INCORRECT`/`CORRECT` outcomes reserve an attempt ID. Retain all such acknowledgements for the match lifetime. Rejections do not reserve IDs or grow the ledger; later submissions use a fresh trusted receipt time. The proven maximum is 2 players × 3 counted attempts × 8 rounds = 48; no eviction or truncation is permitted. Each viewer can receive at most 24 private outcomes.
+- Match/membership validation precedes historical lookup, which precedes current-round/terminal rejection. Compare the original validated text fingerprint before normalization. Counted retries return their original contextual ACK and version; later counters remain authoritative in the current snapshot.
+- `applyCommand` drains due transitions through the trusted receipt time. The future actor must not advance time past already-received commands. Equal-time expiry precedes submission, with unresolved grace before round deadline. A rejected/duplicate action may drain timers but cannot itself score, consume attempts, or duplicate outcomes.
+- Return ordered atomic transition batches `{stateVersion, events[]}`. A decisive round result and match completion share one batch. Empty batches represent context-bound private/phase changes; the caller already owns match identity. Viewer projection can produce version gaps; clients recover canonical snapshots on unexplained gaps. Do not split terminal batches into independently version-deduplicated events.
+- Recovery snapshots include viewer-only counted outcomes and applicable closed/final result. Never project guesses, fingerprints, private catalog IDs or variants. A past closed spelling may appear in a closed-result field; an aborted unclosed answer is never revealed.
+- Disconnect clears readiness only during unscheduled preparation. A fresh ready acknowledgement is required after reconnect. Committed schedules remain fixed. Trusted preparation installs the next descriptor atomically from `ROUND_RESULT`; initial empty preparation alone has round number 0.
+- Use 120 UTF-16 units for the original bounded text, matching M0 input. Normalize only for matching: NFC → trim → lowercase → NFC; preserve internal whitespace, punctuation and accents. Public audio descriptors carry opaque UUID asset/version, measured duration and final-audio SHA-256; actual delivery provenance is a later adapter responsibility.
+- The core interface uses explicit monotonic receipts with strictly increasing ingress sequence and a fixed monotonic/UTC anchor. Invalid inputs fail with static sanitized errors. Prior state, fixtures and returned projections must not alias mutable state.
+
+Contract review added checks for mode-specific progression, per-round history bounds, legal atomic event combinations and possible sudden-death scores. Full acceptance must replay all 48 counted attempts after an eight-round draw, preserving original ACKs without loss.
