@@ -145,6 +145,66 @@ describe('durable socket recovery and observed disconnect grace', () => {
     },
   );
 
+  it('bounds STARTING reconnect churn while preserving its final disconnect receipt', async () => {
+    h = await createHarness();
+    let a = await h.connect();
+    const b = await h.connect();
+    const lobby = await privateLobby(h, a, b);
+    const gate = barrier(h.testDb);
+    let hold = true;
+    h.setFault(async (point) => {
+      if (point === 'before_commit' && hold) {
+        hold = false;
+        await gate.pause();
+      }
+    });
+    const starting = settle(readyLobby(a, b, lobby.lobbyId));
+    await gate.reached;
+    const lifecycle: string[] = [];
+    h.setLifecycleObserver((event) => {
+      if (event.playerId === a.playerId) lifecycle.push(event.event);
+    });
+    for (let reconnect = 0; reconnect < 31; reconnect += 1) {
+      h.clock.set(h.clock.monoNow() + 1_000);
+      a.close();
+      await eventually(
+        async () => lifecycle.length === reconnect * 2 + 1,
+        'captured logical disconnect',
+      );
+      h.clock.set(h.clock.monoNow() + 1_000);
+      a = await h.connect(a.playerId);
+      await eventually(
+        async () => lifecycle.length === reconnect * 2 + 2,
+        'captured logical reconnect',
+      );
+    }
+    h.clock.set(h.clock.monoNow() + 1_000);
+    a.close();
+    await eventually(
+      async () => lifecycle.length === 63,
+      'reserved final disconnect',
+    );
+    const finalDisconnectAt = h.clock.monoNow();
+    h.clock.set(finalDisconnectAt + 1_000);
+    expect((await settle(h.connect(a.playerId))).ok).toBe(false);
+    expect(lifecycle).toHaveLength(63);
+    expect(lifecycle.at(-1)).toBe('player.disconnect');
+    h.clock.set(finalDisconnectAt + 10_000);
+    gate.release();
+    await starting;
+    await h.runtime.reconcile();
+    await eventually(
+      async () =>
+        (await h!.store.readLatestForPlayer(a.playerId))?.state.phase ===
+        'ABORTED',
+      'retained final disconnect expires',
+    );
+    const saved = (await h.store.readLatestForPlayer(a.playerId))!;
+    expect(saved.state.interruption?.reason).toBe('DISCONNECT_TIMEOUT');
+    expect(saved.state.participants.map((p) => p.score)).toEqual([0, 0]);
+    expect(saved.state.completion).toBeNull();
+  }, 30_000);
+
   it.each([9_999, 10_000, null])(
     'preserves buffered STARTING disconnect/reconnect receipts when reconnect offset is %s',
     async (offset) => {

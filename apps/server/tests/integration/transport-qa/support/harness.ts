@@ -181,13 +181,21 @@ export async function connectPeer(
     replies,
     session: undefined as unknown as SessionState,
     request<T>(event: string, payload: unknown, timeoutMs = 5_000) {
+      if (!socket.connected)
+        return Promise.reject(new Error('Socket is disconnected'));
       return new Promise<Reply<T>>((resolve, reject) => {
-        const timer = setTimeout(
-          () => reject(new Error(`Missing ${event} reply`)),
-          timeoutMs,
-        );
+        const disconnected = () => {
+          clearTimeout(timer);
+          reject(new Error('Socket disconnected before reply'));
+        };
+        const timer = setTimeout(() => {
+          socket.off('disconnect', disconnected);
+          reject(new Error(`Missing ${event} reply`));
+        }, timeoutMs);
+        socket.once('disconnect', disconnected);
         send(event, payload, (reply) => {
           clearTimeout(timer);
+          socket.off('disconnect', disconnected);
           replies.push({ event, payload: reply });
           resolve(reply as Reply<T>);
         });
