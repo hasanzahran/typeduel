@@ -1,12 +1,14 @@
 import { z } from 'zod';
 import type { TokenProvider } from './token-provider';
 
-const SessionSchema = z.strictObject({
+// Supabase's OAuth response can include expires_at and provider metadata.
+// Validate the fields we consume and strip the rest rather than retaining PII.
+const SessionSchema = z.object({
   access_token: z.string().min(1).max(8192),
   refresh_token: z.string().min(1).max(8192),
   expires_in: z.number().int().positive().max(86_400),
-  token_type: z.string().min(1).max(32),
-  user: z.object({ id: z.uuid() }).passthrough(),
+  token_type: z.literal('bearer'),
+  user: z.object({ id: z.uuid() }),
 });
 type Session = z.infer<typeof SessionSchema>;
 export interface SupabaseSessionView {
@@ -61,6 +63,7 @@ export class SupabaseSessionProvider implements TokenProvider {
     )
       throw new Error('Invalid credentials');
     const generation = ++this.generation;
+    this.refreshOperation = null;
     this.session = null;
     this.expiresAt = 0;
     const session = await this.exchange('password', { email, password });

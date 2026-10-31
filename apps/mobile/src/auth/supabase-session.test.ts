@@ -5,8 +5,10 @@ const session = (access = 'access', refresh = 'refresh') => ({
   access_token: access,
   refresh_token: refresh,
   expires_in: 60,
+  expires_at: 1793419200,
   token_type: 'bearer',
-  user: { id },
+  user: { id, email: 'player@example.test', user_metadata: {} },
+  weak_password: { reasons: [], message: '' },
 });
 const response = (
   value: unknown,
@@ -81,4 +83,22 @@ test('rejects redirects, off-origin responses and insecure project URLs', async 
   await expect(
     provider.signIn('player@example.test', 'password'),
   ).rejects.toThrow('Authentication failed');
+});
+
+test('rejects malformed required OAuth fields without retaining a session', async () => {
+  for (const edit of [
+    { token_type: 'basic' },
+    { expires_in: -1 },
+    { access_token: '' },
+  ]) {
+    const provider = new SupabaseSessionProvider(
+      'https://project.supabase.co',
+      'key',
+      jest.fn().mockResolvedValue(response({ ...session(), ...edit })),
+    );
+    await expect(
+      provider.signIn('player@example.test', 'password'),
+    ).rejects.toThrow('Authentication failed');
+    expect(provider.current).toBeNull();
+  }
 });
