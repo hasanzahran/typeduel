@@ -489,6 +489,15 @@ export async function readyRound(
   const schedule = scheduled.state.round!.monoSchedule;
   if (!schedule)
     throw new Error('Both audio ready commands did not schedule a round');
+  await h.advance(schedule.playbackAt + round.audio.clipDurationMs);
+  for (const peer of [a, b])
+    success(
+      await peer.request<GameplayReplyData>('round.audio_completed', {
+        matchId,
+        roundId: round.roundId,
+        audioVersion: round.audio.audioVersion,
+      }),
+    );
   await h.advance(schedule.typingStartAt);
   await eventually(
     async () =>

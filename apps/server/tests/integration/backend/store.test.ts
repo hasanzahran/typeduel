@@ -103,6 +103,33 @@ describe('PostgreSQL durable store baseline', () => {
         candidate,
       });
     }
+    const schedule = persisted.state.round!.monoSchedule!;
+    for (const participant of persisted.state.participants) {
+      const candidate = applyCommand(
+        persisted.state,
+        {
+          type: 'round.audio_completed',
+          playerId: participant.playerId,
+          payload: {
+            matchId: persisted.state.matchId,
+            roundId: descriptor.roundId,
+            audioVersion: descriptor.audio.audioVersion,
+          },
+        },
+        receiptAt(
+          persisted.state,
+          schedule.playbackAt + descriptor.audio.clipDurationMs,
+        ),
+      );
+      expect(candidate.error).toBeNull();
+      persisted = await store.commitTransition({
+        owner,
+        matchId: persisted.state.matchId,
+        expectedRevision: persisted.storeRevision,
+        operationId: randomUUID(),
+        candidate,
+      });
+    }
     const candidate = submit(
       persisted.state,
       persisted.state.participants[0].playerId,
