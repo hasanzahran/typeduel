@@ -83,3 +83,16 @@ All physical checks, screenshots, pronunciation/listening, actual ≤150 ms acou
 **Recommendation:** review application implementation after exact-head CI passes. Do not declare Increment 04 accepted or a production release ready until the physical evidence table is completed and material failures are fixed. Do not merge automatically or begin the next increment.
 
 The first CI database run passed 107/108: the new slow-COMMIT test advanced time before confirming the second socket message had reached the server. Its fix waits for the existing post-admission hook and asserts the trusted receipt precedes typing; it does not relax the gameplay outcome assertion. The corrected real-database run passes 108/108. Supabase response compatibility was checked against the [upstream token response](https://github.com/supabase/auth/blob/master/internal/tokens/service.go); only consumed fields are retained.
+
+## Independent-review fixes (baseline `0511993`)
+
+Two narrowly scoped mobile fixes address the independent review without changing contracts, server schedules, UI, dependencies or security policy:
+
+- **P1, cached input eligibility:** the runtime schedules a fresh eligibility calculation at the estimated authoritative typing start and deadline. Each callback rechecks the current phase, session, audio proof and clock; it cannot grant early input or extend a deadline. The existing Game screen subscription receives the refreshed view, so no screen/layout change is needed.
+- **P2, completion recovery:** retained initial-playback completion resumes after the replacement session is ready and its clock is usable. Old-session acknowledgements remain fenced, stale round/version proofs remain invalid, and reconnects share the original 12-send budget and fixed completion deadline.
+
+Ten new regressions cover lagging clocks with no subsequent network events, both typing boundaries, backwards clock correction, stale phases/disposal, connecting → syncing → ready, clock readiness, old-session ACKs, expired/changed completion proofs and the retry cap across reconnects. The focused follow-up reviewer found no blocking implementation defects; its requested reconnect-budget regression was added and passed.
+
+Targeted tests: **26/26 passed**. Full unit/component tests: **274 passed** (28 contracts, 141 server, 98 mobile, 7 offline tools). Frozen installation, formatting, lint, type checks, builds, production exports and Expo checks are revalidated for this follow-up; the latest [PR #6 checks](https://github.com/hasanzahran/typeduel/pull/6/checks) must pass at its exact head, including the 108 real PostgreSQL/Socket.IO tests. The earlier results above remain baseline evidence.
+
+These fixes do not supply physical-device evidence. Reviewed recordings, the physical iPhone/Android matrix, acoustic timing, reconnect/failure and accessibility evidence remain pending as listed above; no final Increment 04 acceptance is claimed.

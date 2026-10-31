@@ -32,6 +32,7 @@ export class MatchRuntime {
   private listeners = new Set<() => void>();
   private foreground = AppState.currentState === 'active';
   private clockTimer: ReturnType<typeof setInterval> | null = null;
+  private inputBoundaryTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly subscriptions: (() => void)[] = [];
   private cachedView!: MatchRuntimeView;
   private unresolvedSubmission: {
@@ -84,7 +85,35 @@ export class MatchRuntime {
   }
   private emit(): void {
     this.cachedView = this.buildView();
+    this.scheduleInputBoundary();
     for (const listener of this.listeners) listener();
+  }
+  private clearInputBoundary(): void {
+    if (this.inputBoundaryTimer !== null) clearTimeout(this.inputBoundaryTimer);
+    this.inputBoundaryTimer = null;
+  }
+  private scheduleInputBoundary(): void {
+    this.clearInputBoundary();
+    const snapshot = this.cachedView.snapshot;
+    if (
+      !this.foreground ||
+      this.connection.status !== 'ready' ||
+      snapshot?.phase !== 'ACTIVE_TYPING'
+    )
+      return;
+    const now = this.connection.clock.now();
+    if (now === null) return;
+    const { typingStartAt, deadlineAt } = snapshot.round.schedule;
+    if (now >= deadlineAt) return;
+    const boundary = now < typingStartAt ? typingStartAt : deadlineAt;
+    this.inputBoundaryTimer = setTimeout(
+      () => {
+        this.inputBoundaryTimer = null;
+        // Re-evaluate current state and clock; a timer never grants permission.
+        this.emit();
+      },
+      Math.max(1, Math.ceil(boundary - now)),
+    );
   }
   private changed(): void {
     this.audio.update(this.connection.consumer.snapshot);
@@ -187,6 +216,7 @@ export class MatchRuntime {
     }
   }
   stop(): void {
+    this.clearInputBoundary();
     this.stopClockSampling();
     this.connection.disconnect();
   }

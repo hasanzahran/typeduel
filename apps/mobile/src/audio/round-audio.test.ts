@@ -72,6 +72,8 @@ const flush = async () => {
 
 let serverNow: number;
 let connectionGeneration: number;
+let connectionStatus: 'ready' | 'connecting' | 'syncing';
+let usableClock: boolean;
 let listener: ((status: PlayerStatus) => void) | null;
 let player: PlayerPort;
 let commands: {
@@ -88,6 +90,8 @@ beforeEach(() => {
   jest.useFakeTimers();
   serverNow = 1000;
   connectionGeneration = 1;
+  connectionStatus = 'ready';
+  usableClock = true;
   listener = null;
   player = {
     status: () => ({
@@ -124,12 +128,14 @@ beforeEach(() => {
     reportReplay: jest.fn().mockResolvedValue({ ack: null, error: null }),
   };
   const connection = {
-    status: 'ready',
+    get status() {
+      return connectionStatus;
+    },
     get connectionGeneration() {
       return connectionGeneration;
     },
     clock: {
-      usable: () => true,
+      usable: () => usableClock,
       quality: () => ({ ageMs: 0, uncertaintyMs: 20, serverNow }),
       now: () => serverNow,
       invalidate: jest.fn(),
@@ -306,7 +312,7 @@ test('old readiness ACK cannot skip readiness for the next round', async () => {
   controller.update(snapshot('PREPARING_ROUND'));
   await flush();
   const next = snapshot('PREPARING_ROUND');
-  if (!('round' in next)) throw new Error('fixture');
+  if (!('round' in next) || !next.round) throw new Error('fixture');
   next.round = { ...prepared, roundId: id(20), roundNumber: 2 };
   next.roundNumber = 2;
   controller.update(next);
@@ -453,4 +459,128 @@ test('completion retransmission stops at typingStartAt even with every ACK missi
   jest.advanceTimersByTime(1000);
   await flush();
   expect(commands.reportAudioCompleted).toHaveBeenCalledTimes(1);
+});
+
+async function finishInitial() {
+  controller.update(snapshot('PREPARING_ROUND'));
+  await flush();
+  controller.update(snapshot('COUNTDOWN'));
+  jest.runOnlyPendingTimers();
+  serverNow = 1400;
+  listener?.({
+    loaded: true,
+    playing: false,
+    ended: true,
+    failed: false,
+    reset: false,
+    durationMs: 500,
+    positionMs: 500,
+  });
+  await flush();
+}
+function beginReconnect() {
+  connectionGeneration++;
+  connectionStatus = 'connecting';
+  usableClock = false;
+  controller.update(snapshot('PLAYING_WORD'));
+  connectionStatus = 'syncing';
+  controller.update(snapshot('PLAYING_WORD'));
+}
+
+test('retained initial end resumes only after connecting, syncing, ready and usable clock', async () => {
+  await finishInitial();
+  expect(commands.reportAudioCompleted).toHaveBeenCalledTimes(1);
+  beginReconnect();
+  connectionStatus = 'ready';
+  controller.update(snapshot('PLAYING_WORD'));
+  await flush();
+  expect(commands.reportAudioCompleted).toHaveBeenCalledTimes(1);
+  usableClock = true;
+  controller.update(snapshot('PLAYING_WORD'));
+  await flush();
+  expect(commands.reportAudioCompleted).toHaveBeenCalledTimes(2);
+  controller.update(snapshot('PLAYING_WORD'));
+  jest.advanceTimersByTime(100);
+  await flush();
+  expect(commands.reportAudioCompleted).toHaveBeenCalledTimes(2);
+  expect(player.play).toHaveBeenCalledTimes(1);
+});
+
+test('late ACK from the old session cannot cancel resumed completion reporting', async () => {
+  let oldAck!: (value: unknown) => void;
+  commands.reportAudioCompleted.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        oldAck = resolve;
+      }),
+  );
+  await finishInitial();
+  beginReconnect();
+  oldAck({ error: null, ack: null });
+  await flush();
+  connectionStatus = 'ready';
+  usableClock = true;
+  controller.update(snapshot('PLAYING_WORD'));
+  await flush();
+  expect(commands.reportAudioCompleted).toHaveBeenCalledTimes(2);
+});
+
+test('reconnection at the original completion deadline never retransmits retained proof', async () => {
+  await finishInitial();
+  beginReconnect();
+  serverNow = scheduled.schedule.typingStartAt;
+  connectionStatus = 'ready';
+  usableClock = true;
+  controller.update(snapshot('PLAYING_WORD'));
+  jest.advanceTimersByTime(1000);
+  await flush();
+  expect(commands.reportAudioCompleted).toHaveBeenCalledTimes(1);
+});
+
+test('a changed round/version cannot reuse a retained end after reconnect', async () => {
+  await finishInitial();
+  beginReconnect();
+  connectionStatus = 'ready';
+  usableClock = true;
+  const next = snapshot('PLAYING_WORD');
+  if (!('round' in next) || !next.round) throw new Error('fixture');
+  next.round.audio.audioVersion = id(99);
+  controller.update(next);
+  await flush();
+  expect(commands.reportAudioCompleted).toHaveBeenCalledTimes(1);
+  expect(controller.current.failure).toBe('APP_INACTIVE');
+});
+
+test('repeated state updates do not start parallel completion loops or reset the bounded budget', async () => {
+  commands.reportAudioCompleted.mockImplementation(() => new Promise(() => {}));
+  await finishInitial();
+  for (let attempt = 0; attempt < 20; attempt++) {
+    controller.update(snapshot('PLAYING_WORD'));
+    jest.advanceTimersByTime(100);
+    await flush();
+  }
+  expect(commands.reportAudioCompleted).toHaveBeenCalledTimes(12);
+});
+
+test('reconnecting preserves the remaining completion budget instead of resetting it', async () => {
+  commands.reportAudioCompleted.mockImplementation(() => new Promise(() => {}));
+  await finishInitial();
+  jest.advanceTimersByTime(900);
+  await flush();
+  expect(commands.reportAudioCompleted).toHaveBeenCalledTimes(10);
+  beginReconnect();
+  connectionStatus = 'ready';
+  usableClock = true;
+  controller.update(snapshot('PLAYING_WORD'));
+  jest.advanceTimersByTime(100);
+  await flush();
+  expect(commands.reportAudioCompleted).toHaveBeenCalledTimes(12);
+  beginReconnect();
+  connectionStatus = 'ready';
+  usableClock = true;
+  controller.update(snapshot('PLAYING_WORD'));
+  jest.advanceTimersByTime(1000);
+  await flush();
+  expect(commands.reportAudioCompleted).toHaveBeenCalledTimes(12);
+  expect(player.play).toHaveBeenCalledTimes(1);
 });

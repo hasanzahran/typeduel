@@ -1,3 +1,4 @@
+jest.mock('expo-audio', () => ({}));
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn() }));
 jest.mock('./connection', () => ({ MatchConnection: jest.fn() }));
 jest.mock('./commands', () => ({
@@ -9,6 +10,7 @@ jest.mock('../../audio/round-audio', () => ({
   RoundAudioController: jest.fn(),
 }));
 
+import { AppState } from 'react-native';
 import { MatchRuntime } from './runtime';
 import { MatchConnection } from './connection';
 import { MatchCommands } from './commands';
@@ -17,12 +19,24 @@ import { RoundAudioController } from '../../audio/round-audio';
 const snapshot = {
   phase: 'ACTIVE_TYPING',
   matchId: 'match',
-  round: { roundId: 'round' },
+  round: {
+    roundId: 'round',
+    schedule: { typingStartAt: 1000, deadlineAt: 9000 },
+  },
 };
 const send = jest.fn();
 const create = jest.fn();
 let runtime: MatchRuntime;
+let changed: () => void;
+let currentSnapshot = { ...snapshot };
+const actualAudio = jest.requireActual<
+  typeof import('../../audio/round-audio')
+>('../../audio/round-audio');
 beforeEach(() => {
+  AppState.currentState = 'active';
+  jest.useFakeTimers();
+  jest.setSystemTime(950);
+  currentSnapshot = { ...snapshot };
   jest.clearAllMocks();
   create.mockReset();
   send.mockReset();
@@ -30,11 +44,18 @@ beforeEach(() => {
     () =>
       ({
         status: 'ready',
+        clock: { now: () => Date.now(), usable: () => true },
+        sampleClock: () => new Promise(() => {}),
         consumer: {
-          snapshot: { ...snapshot },
+          get snapshot() {
+            return currentSnapshot;
+          },
           state: null,
           receivedResults: [],
-          subscribe: () => () => {},
+          subscribe: (listener: () => void) => {
+            changed = listener;
+            return () => {};
+          },
         },
         disconnect: jest.fn(),
       }) as unknown as MatchConnection,
@@ -51,6 +72,7 @@ beforeEach(() => {
     () =>
       ({
         canType: () => true,
+        update: jest.fn(),
         current: {},
         subscribe: () => () => {},
         dispose: jest.fn(),
@@ -61,7 +83,25 @@ beforeEach(() => {
   });
   create.mockReturnValueOnce('first').mockReturnValueOnce('second');
 });
-afterEach(() => runtime.dispose());
+afterEach(() => {
+  runtime.dispose();
+  jest.useRealTimers();
+});
+
+function useRealTimeGate() {
+  const proof = {
+    foreground: true,
+    initialEnded: true,
+    state: { failure: null },
+    connection: runtime.connection,
+  } as unknown as RoundAudioController;
+  jest
+    .spyOn(runtime.audio, 'canType')
+    .mockImplementation((value) =>
+      actualAudio.RoundAudioController.prototype.canType.call(proof, value),
+    );
+  changed();
+}
 
 test('rejects plaintext phone backends before creating an authenticated connection', () => {
   const calls = jest.mocked(MatchConnection).mock.calls.length;
@@ -100,4 +140,47 @@ test('no answer is sent without the local playback and current clock gate', asyn
     'Typing is unavailable',
   );
   expect(send).not.toHaveBeenCalled();
+});
+
+test('lagging estimate unlocks at start and disables at deadline without network or clock responses', () => {
+  useRealTimeGate();
+  const notified = jest.fn();
+  runtime.subscribe(notified);
+  expect(runtime.view.inputEnabled).toBe(false);
+  jest.advanceTimersByTime(49);
+  expect(runtime.view.inputEnabled).toBe(false);
+  jest.advanceTimersByTime(1);
+  expect(runtime.view.inputEnabled).toBe(true);
+  expect(notified).toHaveBeenCalledTimes(1);
+  jest.advanceTimersByTime(7999);
+  expect(runtime.view.inputEnabled).toBe(true);
+  jest.advanceTimersByTime(1);
+  expect(runtime.view.inputEnabled).toBe(false);
+  expect(notified).toHaveBeenCalledTimes(2);
+});
+
+test('a stale boundary wake cannot unlock a round that has left ACTIVE_TYPING', () => {
+  useRealTimeGate();
+  currentSnapshot = { ...snapshot, phase: 'COUNTDOWN' };
+  changed();
+  jest.advanceTimersByTime(500);
+  expect(runtime.view.inputEnabled).toBe(false);
+});
+
+test('boundary rechecks a corrected clock instead of granting permission from the original delay', () => {
+  useRealTimeGate();
+  jest.setSystemTime(900);
+  jest.advanceTimersByTime(50);
+  expect(runtime.view.inputEnabled).toBe(false);
+  jest.advanceTimersByTime(50);
+  expect(runtime.view.inputEnabled).toBe(true);
+});
+
+test('disposal cancels a pending eligibility boundary notification', () => {
+  useRealTimeGate();
+  const notified = jest.fn();
+  runtime.subscribe(notified);
+  runtime.dispose();
+  jest.advanceTimersByTime(9000);
+  expect(notified).not.toHaveBeenCalled();
 });

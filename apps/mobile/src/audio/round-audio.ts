@@ -64,6 +64,7 @@ export class RoundAudioController {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private completionTimer: ReturnType<typeof setTimeout> | null = null;
   private completionAcknowledged = false;
+  private completionAttempts = 0;
   private readyReported = false;
   private readyInFlight = false;
   private readyAttempts = 0;
@@ -124,6 +125,7 @@ export class RoundAudioController {
     this.readyAttempts = 0;
     this.initialEnded = false;
     this.completionAcknowledged = false;
+    this.completionAttempts = 0;
     this.failureReported = false;
     this.failureAttempts = 0;
     this.playerConnectionGeneration = -1;
@@ -174,13 +176,15 @@ export class RoundAudioController {
         this.completionAcknowledged = false;
         if (this.completionTimer) clearTimeout(this.completionTimer);
         this.completionTimer = null;
-        void this.reportCompletion(this.generation, key, 0);
       }
     }
     if (this.state.phase === 'failed') {
       void this.reportFailure();
       return;
     }
+    // A retained end proof may outlive connecting/syncing or clock refresh.
+    // Resume only when reportCompletion's current-session/time gates allow it.
+    if (this.initialEnded) void this.reportCompletion(this.generation, key);
     this.patch({ replaysRemaining: this.commands.replaysRemaining });
     // A committed schedule proves that both readiness commands were accepted,
     // even when our readiness ACK was lost. Keep the local decoded-file proof.
@@ -345,13 +349,12 @@ export class RoundAudioController {
     this.playbackKind = null;
     this.initialEnded = true;
     this.patch({ phase: 'ended' });
-    void this.reportCompletion(generation, key, 0);
+    void this.reportCompletion(generation, key);
   }
 
   private async reportCompletion(
     generation: number,
     key: string,
-    attempt: number,
   ): Promise<void> {
     if (
       !this.isCurrent(generation, key) ||
@@ -359,21 +362,27 @@ export class RoundAudioController {
       !this.initialEnded ||
       this.completionAcknowledged ||
       this.state.failure ||
-      this.connection.status !== 'ready'
+      this.connection.status !== 'ready' ||
+      !this.connection.clock.usable() ||
+      this.playerConnectionGeneration !==
+        this.connection.connectionGeneration ||
+      this.completionTimer !== null ||
+      this.completionAttempts >= 12 ||
+      !['COUNTDOWN', 'PLAYING_WORD'].includes(this.snapshot.phase)
     )
       return;
     const round = openRound(this.snapshot);
     if (!round || !('schedule' in round)) return;
     const now = this.connection.clock.now();
-    if (now === null || now >= round.schedule.typingStartAt || attempt >= 12)
-      return;
+    if (now === null || now >= round.schedule.typingStartAt) return;
+    this.completionAttempts++;
     // Do not wait for the transport's five-second timeout: the shared gate is
     // only one second after clip end. These bounded, volatile duplicates carry
     // the same real completion proof and can never extend the server window.
     this.completionTimer = setTimeout(
       () => {
         this.completionTimer = null;
-        void this.reportCompletion(generation, key, attempt + 1);
+        void this.reportCompletion(generation, key);
       },
       Math.min(100, round.schedule.typingStartAt - now),
     );
