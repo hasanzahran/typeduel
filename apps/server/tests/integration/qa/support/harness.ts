@@ -313,6 +313,23 @@ export async function prepareRound(scenario: Scenario, active = true) {
     }),
   });
   for (const step of prepared.steps) await persistCandidate(scenario, step);
+  for (const participant of scenario.record.state.participants) {
+    const round = scenario.record.state.round;
+    if (!round?.monoSchedule) throw new Error('Scheduled round missing audio');
+    await drive(
+      scenario,
+      {
+        type: 'round.audio_completed',
+        playerId: participant.playerId,
+        payload: {
+          matchId: scenario.record.state.matchId,
+          roundId: round.roundId,
+          audioVersion: round.audio.audioVersion,
+        },
+      },
+      round.monoSchedule.playbackAt + round.audio.clipDurationMs,
+    );
+  }
   if (active)
     await persistCandidate(
       scenario,

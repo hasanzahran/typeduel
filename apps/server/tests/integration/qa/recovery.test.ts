@@ -440,6 +440,23 @@ describe('real PostgreSQL process death boundaries', () => {
           });
         }
         await child.request('wake', {
+          at:
+            scheduled.monoSchedule.playbackAt + descriptor.audio.clipDurationMs,
+        });
+        for (const participant of saved.state.participants) {
+          await child.request('player', {
+            playerId: participant.playerId,
+            command: {
+              type: 'round.audio_completed',
+              payload: {
+                matchId: initial.matchId,
+                roundId: descriptor.roundId,
+                audioVersion: descriptor.audio.audioVersion,
+              },
+            },
+          });
+        }
+        await child.request('wake', {
           at: scheduled.monoSchedule.typingStartAt,
         });
         finalPacket = {

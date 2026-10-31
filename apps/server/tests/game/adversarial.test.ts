@@ -11,6 +11,7 @@ import {
   createFixtureMatch,
   createRoundDescriptor,
   fixtureId,
+  preparePlayableRound,
   prepareReadyRound,
   receiptAt,
   submit,
@@ -36,12 +37,65 @@ function publicState(state: State) {
 }
 
 function activeRound(state = makeMatch()) {
-  const prepared = prepareReadyRound(state);
+  const prepared = preparePlayableRound(state);
   const active = tickAt(prepared.state, prepared.monoSchedule.typingStartAt);
   return { ...prepared, state: active.state };
 }
 
 describe('independent adversarial game traces', () => {
+  it('rejects a premature completion without reserving proof, then accepts a timely retry', () => {
+    const prepared = prepareReadyRound(makeMatch());
+    const playing = tickAt(prepared.state, prepared.monoSchedule.playbackAt);
+    expect(playing.state.phase).toBe('PLAYING_WORD');
+    const first = players[0];
+    const early = applyCommand(
+      playing.state,
+      {
+        type: 'round.audio_completed',
+        playerId: first,
+        payload: {
+          matchId: playing.state.matchId,
+          roundId: prepared.descriptor.roundId,
+          audioVersion: prepared.descriptor.audio.audioVersion,
+        },
+      },
+      receiptAt(
+        playing.state,
+        prepared.monoSchedule.playbackAt +
+          prepared.descriptor.audio.clipDurationMs -
+          1,
+      ),
+    );
+    expect(early.error?.code).toBe('INVALID_TIME');
+    expect(early.state.participants[0]?.initialPlaybackCompleted).toBe(false);
+    expect(early.batches).toEqual([]);
+
+    let state = early.state;
+    for (const playerId of players) {
+      const timely = applyCommand(
+        state,
+        {
+          type: 'round.audio_completed',
+          playerId,
+          payload: {
+            matchId: state.matchId,
+            roundId: prepared.descriptor.roundId,
+            audioVersion: prepared.descriptor.audio.audioVersion,
+          },
+        },
+        receiptAt(
+          state,
+          prepared.monoSchedule.playbackAt +
+            prepared.descriptor.audio.clipDurationMs,
+        ),
+      );
+      expect(timely.error).toBeNull();
+      state = timely.state;
+    }
+    const typing = tickAt(state, prepared.monoSchedule.typingStartAt);
+    expect(typing.state.phase).toBe('ACTIVE_TYPING');
+  });
+
   it('rejects old-round readiness after the next preparation and schedules only fresh acknowledgements', () => {
     const first = activeRound();
     const closed = submit(first.state, players[0], {
@@ -210,7 +264,7 @@ describe('independent adversarial game traces', () => {
 
   it('keeps matching round and attempt IDs isolated across interleaved matches', () => {
     const first = activeRound(makeMatch(fixtureId(901)));
-    const secondPrepared = prepareReadyRound(makeMatch(fixtureId(902)), {
+    const secondPrepared = preparePlayableRound(makeMatch(fixtureId(902)), {
       descriptor: { ...first.descriptor },
     });
     const second = {
@@ -265,7 +319,7 @@ describe('independent adversarial game traces', () => {
   });
 
   it('leaves early rejected IDs unreserved, then compares counted payloads before normalization', () => {
-    const prepared = prepareReadyRound(makeMatch());
+    const prepared = preparePlayableRound(makeMatch());
     const attemptId = fixtureId(910);
     const early = submit(prepared.state, players[0], {
       attemptId,
@@ -304,13 +358,16 @@ describe('independent adversarial game traces', () => {
   });
 
   it('does not grow counted history or consume attempts during a rejection flood', () => {
-    const prepared = prepareReadyRound(makeMatch());
+    const prepared = preparePlayableRound(makeMatch());
     let state = prepared.state;
     for (let index = 0; index < 128; index += 1) {
       const rejected = submit(state, players[0], {
         attemptId: fixtureId(20_000 + index),
         text: 'rejected',
-        atMonoMs: prepared.monoSchedule.playbackAt - 1,
+        atMonoMs:
+          prepared.monoSchedule.playbackAt +
+          prepared.descriptor.audio.clipDurationMs +
+          1,
       });
       expect(rejected.ack?.status).toBe('NOT_TYPING');
       state = rejected.state;
@@ -414,7 +471,19 @@ describe('independent adversarial game traces', () => {
   it.each([-1, 0, 1])(
     'orders a delayed final-round wake when grace minus deadline is %i ms',
     (offset) => {
-      let state = makeMatch();
+      let state = createFixtureMatch({
+        matchId: fixtureId(900),
+        participants: [...players],
+        config: {
+          typingDurationMsByLevel: {
+            1: 10_001,
+            2: 8_000,
+            3: 8_000,
+            4: 8_000,
+            5: 8_000,
+          },
+        },
+      });
       for (let round = 1; round <= 4; round += 1) {
         const active = activeRound(state);
         state = submit(active.state, players[0], {
@@ -423,7 +492,14 @@ describe('independent adversarial game traces', () => {
           atMonoMs: active.monoSchedule.typingStartAt,
         }).state;
       }
-      const fifth = prepareReadyRound(state);
+      const fifthPrepared = preparePlayableRound(state);
+      const fifth = {
+        ...fifthPrepared,
+        state: tickAt(
+          fifthPrepared.state,
+          fifthPrepared.monoSchedule.typingStartAt,
+        ).state,
+      };
       const disconnected = applyCommand(
         fifth.state,
         { type: 'player.disconnect', playerId: players[1] },
