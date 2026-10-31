@@ -39,7 +39,13 @@ interface Pending {
   reject(error: StoreError): void;
 }
 const packetSchema = z.strictObject({
-  type: z.enum(['answer.submit', 'round.audio_ready', 'round.replay_used']),
+  type: z.enum([
+    'answer.submit',
+    'round.audio_ready',
+    'round.audio_completed',
+    'round.audio_failed',
+    'round.replay_used',
+  ]),
   payload: z.unknown(),
 });
 const terminal = (record: PersistedMatch) =>
@@ -106,6 +112,8 @@ export function createMatchActor(options: {
       previous = entry.receivedAtMonoMs;
     }
   }
+  if (record.state.legacyCheckpoint && !terminal(record))
+    throw new StoreError('INVALID_STATE');
   let sequence = record.state.lastInput.ingressSequence;
   let closed = false;
   let bootstrapping = bootstrap !== null;
@@ -392,7 +400,14 @@ export function createMatchActor(options: {
     acceptTrustedCommand(
       command: Exclude<
         GameCommand,
-        { type: 'answer.submit' | 'round.audio_ready' | 'round.replay_used' }
+        {
+          type:
+            | 'answer.submit'
+            | 'round.audio_ready'
+            | 'round.audio_completed'
+            | 'round.audio_failed'
+            | 'round.replay_used';
+        }
       >,
     ): Promise<ActorResult> {
       return enqueue(command);

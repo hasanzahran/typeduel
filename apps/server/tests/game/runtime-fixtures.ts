@@ -11,12 +11,16 @@ import {
 import { createGameRuntime } from '../../src/runtime.js';
 import type { RuntimeHooks, RuntimeConfig } from '../../src/runtime.js';
 import type { Reply, SessionState } from '@typeduel/contracts';
+import type { AudioRuntimeOptions } from '../../src/audio/access.js';
+import type { RoundSource } from '../../src/game/source.js';
 
 export async function testRuntime(
   hooks?: RuntimeHooks,
   options: {
     checkAvailability?: () => Promise<boolean>;
     config?: Partial<RuntimeConfig>;
+    source?: RoundSource;
+    audio?: AudioRuntimeOptions;
   } = {},
 ) {
   const records = new Map<string, PersistedMatch>();
@@ -116,7 +120,7 @@ export async function testRuntime(
         return { playerId: token, expiresAtUtcMs: clock.utcNow() + 3600000 };
       },
     },
-    source: {
+    source: options.source ?? {
       async checkAvailability() {
         if (options.checkAvailability) return options.checkAvailability();
         return true;
@@ -139,6 +143,7 @@ export async function testRuntime(
         };
       },
     },
+    ...(options.audio ? { audio: options.audio } : {}),
     config: { resultHoldMs: 0, ...options.config },
     ...(hooks ? { hooks } : {}),
   });
@@ -206,6 +211,21 @@ export function call<T>(
 }
 export const sync = (socket: Socket) =>
   call<SessionState>(socket, 'session.sync', { requestId: randomUUID() });
+export async function completeInitialPlayback(
+  h: Awaited<ReturnType<typeof testRuntime>>,
+  clients: { socket: Socket }[],
+  input: {
+    matchId: string;
+    roundId: string;
+    audioVersion: string;
+  },
+) {
+  const round = h.records.get(input.matchId)?.state.round;
+  if (!round?.monoSchedule) throw new Error('No scheduled round');
+  await h.advance(round.monoSchedule.playbackAt + round.audio.clipDurationMs);
+  for (const client of clients)
+    await call(client.socket, 'round.audio_completed', input);
+}
 export async function pair(h: Awaited<ReturnType<typeof testRuntime>>) {
   const a = await h.connect(),
     b = await h.connect();

@@ -115,6 +115,8 @@ export function attachGameSocket(
                 : [
                       'answer.submit',
                       'round.audio_ready',
+                      'round.audio_completed',
+                      'round.audio_failed',
                       'round.replay_used',
                     ].includes(event)
                   ? GameplayReplySchema

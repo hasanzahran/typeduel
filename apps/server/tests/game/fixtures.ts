@@ -134,3 +134,35 @@ export function submit(
     receiptAt(state, options.atMonoMs),
   );
 }
+
+/** Drive the mandatory gate through real commands; no fixture bypass flags. */
+export function completeInitialPlayback(state: MatchState): MatchState {
+  const round = state.round;
+  if (!round?.monoSchedule) throw new Error('No scheduled fixture audio');
+  const at = round.monoSchedule.playbackAt + round.audio.clipDurationMs;
+  for (const p of state.participants) {
+    const result = applyCommand(
+      state,
+      {
+        type: 'round.audio_completed',
+        playerId: p.playerId,
+        payload: {
+          matchId: state.matchId,
+          roundId: round.roundId,
+          audioVersion: round.audio.audioVersion,
+        },
+      },
+      receiptAt(state, at),
+    );
+    if (result.error)
+      throw new Error(`Fixture completion failed: ${result.error.code}`);
+    state = result.state;
+  }
+  return state;
+}
+export function preparePlayableRound(
+  ...args: Parameters<typeof prepareReadyRound>
+): ReturnType<typeof prepareReadyRound> {
+  const prepared = prepareReadyRound(...args);
+  return { ...prepared, state: completeInitialPlayback(prepared.state) };
+}

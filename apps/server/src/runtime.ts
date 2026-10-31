@@ -44,6 +44,9 @@ import { createSessions } from './socket/session.js';
 import { createHandlers } from './socket/handlers.js';
 import { attachGameSocket } from './socket/server.js';
 import { roomRoutes } from './http/rooms.js';
+import { createAudioAccess, type AudioRuntimeOptions } from './audio/access.js';
+import { audioRoutes } from './http/audio.js';
+import { TransportFailure } from './socket/limits.js';
 export async function createGameRuntime(options: {
   database: Database;
   owner: OwnerLease;
@@ -51,6 +54,7 @@ export async function createGameRuntime(options: {
   clock?: ActorClock;
   verifier: TokenVerifier;
   source: RoundSource;
+  audio?: AudioRuntimeOptions;
   config?: Partial<RuntimeConfig>;
   hooks?: RuntimeHooks | undefined;
 }) {
@@ -86,6 +90,7 @@ export async function createGameRuntime(options: {
   if (!owner.isActive()) throw new Error('Server unavailable');
   const app = buildApp();
   let closed = false;
+  const serverInstanceId = randomUUID();
   const registry = createRegistry({
     store,
     owner,
@@ -100,7 +105,7 @@ export async function createGameRuntime(options: {
     clock,
     registry,
     config,
-    serverInstanceId: randomUUID(),
+    serverInstanceId,
     sessions: () => sessions,
   });
   const sessions = createSessions({
@@ -126,6 +131,31 @@ export async function createGameRuntime(options: {
     handle,
   });
   roomRoutes(app, { sessions, coordinator, verifier, clock, hooks });
+  if (options.audio) {
+    const access = createAudioAccess({
+      ...options.audio,
+      clock,
+      owner,
+      authorize(identity) {
+        const session = sessions.current(identity.playerId);
+        if (!session || session.sessionId !== identity.sessionId)
+          throw new TransportFailure('UNAUTHORIZED');
+        const scope = coordinator.matchScope(session, identity.matchId);
+        if (
+          scope.serverInstanceId !== identity.serverInstanceId ||
+          scope.sessionId !== identity.sessionId ||
+          scope.admissionRevision !== identity.admissionRevision
+        )
+          throw new TransportFailure('UNAUTHORIZED');
+        return registry.authorizeAudio(identity.matchId, identity.playerId, {
+          roundId: identity.roundId,
+          assetId: identity.assetId,
+          audioVersion: identity.audioVersion,
+        });
+      },
+    });
+    audioRoutes(app, { verifier, sessions, coordinator, clock, access });
+  }
   app.get('/health/ready', async (_request, reply) => {
     try {
       if (closed || !owner.isActive()) throw new Error();
