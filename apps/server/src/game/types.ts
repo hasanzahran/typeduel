@@ -74,7 +74,7 @@ export interface MatchState {
   /** Read adapter marker: old live clocks may only be restart-interrupted. */
   legacyCheckpoint?: true;
   /** Historical terminal v1 outcome; no initial-playback proof is fabricated. */
-  legacyTerminal?: true;
+  legacyTerminal?: true | undefined;
   matchId: string;
   setup: MatchSetup;
   clockAnchor: ClockAnchor;

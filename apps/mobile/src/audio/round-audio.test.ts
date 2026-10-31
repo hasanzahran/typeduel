@@ -285,3 +285,118 @@ test('a reconnect during pending playback invalidates the old player callback', 
   });
   expect(commands.reportAudioCompleted).not.toHaveBeenCalled();
 });
+
+test('a committed schedule recovers a lost readiness ACK without replaying or moving time', async () => {
+  commands.reportDecodedAudio.mockRejectedValueOnce(new Error('ACK lost'));
+  controller.update(snapshot('PREPARING_ROUND'));
+  await flush();
+  controller.update(snapshot('COUNTDOWN'));
+  jest.runOnlyPendingTimers();
+  expect(player.play).toHaveBeenCalledTimes(1);
+});
+
+test('old readiness ACK cannot skip readiness for the next round', async () => {
+  let resolveOld!: (value: unknown) => void;
+  commands.reportDecodedAudio.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        resolveOld = resolve;
+      }),
+  );
+  controller.update(snapshot('PREPARING_ROUND'));
+  await flush();
+  const next = snapshot('PREPARING_ROUND');
+  if (!('round' in next)) throw new Error('fixture');
+  next.round = { ...prepared, roundId: id(20), roundNumber: 2 };
+  next.roundNumber = 2;
+  controller.update(next);
+  resolveOld({ ack: null, error: null });
+  await flush();
+  expect(commands.reportDecodedAudio).toHaveBeenCalledTimes(2);
+  expect(commands.reportDecodedAudio).toHaveBeenLastCalledWith(
+    expect.objectContaining({ roundId: id(20) }),
+  );
+});
+
+test('native duration inconsistent with reviewed bytes never reports readiness', async () => {
+  player.status = () => ({
+    loaded: true,
+    playing: false,
+    ended: false,
+    failed: false,
+    reset: false,
+    durationMs: 1500,
+    positionMs: 0,
+  });
+  controller.update(snapshot('PREPARING_ROUND'));
+  await flush();
+  expect(controller.current.failure).toBe('DECODE_FAILED');
+  expect(commands.reportDecodedAudio).not.toHaveBeenCalled();
+  expect(player.dispose).toHaveBeenCalled();
+});
+
+test('a seek finishing after the fixed deadline never starts a replay', async () => {
+  controller.update(snapshot('PREPARING_ROUND'));
+  await flush();
+  controller.update(snapshot('COUNTDOWN'));
+  jest.runOnlyPendingTimers();
+  listener?.({
+    loaded: true,
+    playing: false,
+    ended: true,
+    failed: false,
+    reset: false,
+    durationMs: 500,
+    positionMs: 500,
+  });
+  await flush();
+  serverNow = 1600;
+  controller.update(snapshot('ACTIVE_TYPING'));
+  let finishSeek!: () => void;
+  jest.mocked(player.seekStart).mockImplementationOnce(
+    () =>
+      new Promise<void>((resolve) => {
+        finishSeek = resolve;
+      }),
+  );
+  const replay = controller.replay();
+  serverNow = 9500;
+  finishSeek();
+  await expect(replay).rejects.toMatchObject({ code: 'APP_INACTIVE' });
+  expect(player.play).toHaveBeenCalledTimes(1);
+  expect(commands.reportReplay).not.toHaveBeenCalled();
+});
+
+test('a new round fences an old pending replay without poisoning the new round', async () => {
+  controller.update(snapshot('PREPARING_ROUND'));
+  await flush();
+  controller.update(snapshot('COUNTDOWN'));
+  jest.runOnlyPendingTimers();
+  listener?.({
+    loaded: true,
+    playing: false,
+    ended: true,
+    failed: false,
+    reset: false,
+    durationMs: 500,
+    positionMs: 500,
+  });
+  await flush();
+  serverNow = 1600;
+  controller.update(snapshot('ACTIVE_TYPING'));
+  let finishSeek!: () => void;
+  jest.mocked(player.seekStart).mockImplementationOnce(
+    () =>
+      new Promise<void>((resolve) => {
+        finishSeek = resolve;
+      }),
+  );
+  const replay = controller.replay();
+  controller.update(null);
+  controller.update(snapshot('PREPARING_ROUND'));
+  await flush();
+  finishSeek();
+  await expect(replay).rejects.toMatchObject({ code: 'APP_INACTIVE' });
+  expect(controller.current.failure).toBeNull();
+  expect(player.play).toHaveBeenCalledTimes(1);
+});

@@ -1,7 +1,16 @@
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, readFile, realpath, rm, stat } from 'node:fs/promises';
+import {
+  mkdtemp,
+  readFile,
+  realpath,
+  rm,
+  stat,
+  open,
+  writeFile,
+} from 'node:fs/promises';
+import { constants } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, isAbsolute } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -10,6 +19,31 @@ const exec = promisify(execFile);
 const sha = (bytes: Uint8Array) =>
   createHash('sha256').update(bytes).digest('hex');
 const invalid = () => new Error('Audio validation failed');
+
+async function boundedFile(path: string, limit: number): Promise<Buffer> {
+  const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+  try {
+    const metadata = await file.stat();
+    if (!metadata.isFile() || metadata.size < 1 || metadata.size > limit)
+      throw invalid();
+    const bytes = Buffer.alloc(metadata.size);
+    let offset = 0;
+    while (offset < bytes.length) {
+      const result = await file.read(
+        bytes,
+        offset,
+        bytes.length - offset,
+        null,
+      );
+      if (result.bytesRead === 0) throw invalid();
+      offset += result.bytesRead;
+    }
+    if ((await file.stat()).size !== metadata.size) throw invalid();
+    return bytes;
+  } finally {
+    await file.close();
+  }
+}
 
 /** Strict bounded PCM RIFF parsing: compressed header duration is never authoritative. */
 export function measurePcm(wav: Buffer): {
@@ -86,7 +120,7 @@ export async function validateBytes(
       metadata.size > MAX_BYTES
     )
       throw invalid();
-    const bytes = await readFile(file);
+    const bytes = await boundedFile(file, MAX_BYTES);
     if (
       bytes.length !== asset.byteLength ||
       sha(bytes) !== asset.sha256 ||
@@ -105,9 +139,11 @@ export async function decodeAndMeasure(file: string) {
   const metadata = await stat(file);
   if (!metadata.isFile() || metadata.size < 1 || metadata.size > MAX_BYTES)
     throw invalid();
-  const original = await readFile(file);
+  const original = await boundedFile(file, MAX_BYTES);
   const directory = await mkdtemp(join(tmpdir(), 'typeduel-audio-'));
   try {
+    const input = join(directory, 'input.mp3');
+    await writeFile(input, original, { flag: 'wx', mode: 0o600 });
     // Private temporary output; never modify, resample or normalize the canonical MP3.
     await exec(
       '/bin/sh',
@@ -115,15 +151,16 @@ export async function decodeAndMeasure(file: string) {
         '-c',
         'ulimit -f 2048; exec /usr/bin/afconvert -f WAVE -d LEI16 "$1" "$2"',
         'typeduel-decode',
-        file,
+        input,
         join(directory, 'decoded.wav'),
       ],
       { timeout: 15000, maxBuffer: 16384 },
     );
     const decodedPath = join(directory, 'decoded.wav');
     if ((await stat(decodedPath)).size > 2_000_000) throw invalid();
-    const measurement = measurePcm(await readFile(decodedPath));
-    if (sha(await readFile(file)) !== sha(original)) throw invalid();
+    const measurement = measurePcm(await boundedFile(decodedPath, 2_000_000));
+    if (sha(await boundedFile(file, MAX_BYTES)) !== sha(original))
+      throw invalid();
     return {
       ...measurement,
       sha256: sha(original),

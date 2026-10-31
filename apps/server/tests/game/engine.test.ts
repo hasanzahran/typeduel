@@ -224,7 +224,7 @@ describe('deterministic authoritative core', () => {
       },
       receiptAt(state, firstEnd - 1),
     );
-    expect(early.error?.code).toBe('INVALID_PHASE');
+    expect(early.error?.code).toBe('INVALID_TIME');
     state = early.state;
     for (const [index, at] of [
       firstEnd,

@@ -11,7 +11,7 @@ import {
   RoundAudioController,
   type RoundAudioState,
 } from '../../audio/round-audio';
-import { MatchCommands } from './commands';
+import { GameplayFailure, MatchCommands } from './commands';
 import { MatchConnection, type ConnectionStatus } from './connection';
 import { MatchLobby } from './lobby';
 
@@ -34,6 +34,12 @@ export class MatchRuntime {
   private clockTimer: ReturnType<typeof setInterval> | null = null;
   private readonly subscriptions: (() => void)[] = [];
   private cachedView!: MatchRuntimeView;
+  private unresolvedSubmission: {
+    roundId: string;
+    matchId: string;
+    text: string;
+    id: string;
+  } | null = null;
 
   constructor(baseUrl: string, tokenProvider: TokenProvider) {
     this.connection = new MatchConnection({
@@ -142,14 +148,48 @@ export class MatchRuntime {
     });
   }
   async submit(text: string) {
-    const id = this.commands.createAnswer(text);
-    return this.commands.sendAnswer(id);
+    const snapshot = this.connection.consumer.snapshot;
+    if (
+      !snapshot ||
+      snapshot.phase !== 'ACTIVE_TYPING' ||
+      !this.audio.canType(snapshot)
+    )
+      throw new Error('Typing is unavailable');
+    let submission = this.unresolvedSubmission;
+    if (
+      !submission ||
+      submission.matchId !== snapshot.matchId ||
+      submission.roundId !== snapshot.round.roundId ||
+      submission.text !== text
+    ) {
+      submission = {
+        matchId: snapshot.matchId,
+        roundId: snapshot.round.roundId,
+        text,
+        id: this.commands.createAnswer(text),
+      };
+      this.unresolvedSubmission = submission;
+    }
+    try {
+      const ack = await this.commands.sendAnswer(submission.id);
+      if (this.unresolvedSubmission === submission)
+        this.unresolvedSubmission = null;
+      return ack;
+    } catch (error) {
+      if (
+        error instanceof GameplayFailure &&
+        this.unresolvedSubmission === submission
+      )
+        this.unresolvedSubmission = null;
+      throw error;
+    }
   }
   stop(): void {
     this.stopClockSampling();
     this.connection.disconnect();
   }
   dispose(): void {
+    this.unresolvedSubmission = null;
     this.stop();
     this.audio.dispose();
     this.commands.dispose();

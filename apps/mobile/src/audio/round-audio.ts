@@ -134,11 +134,13 @@ export class RoundAudioController {
 
   update(snapshot: MatchSnapshot | null): void {
     this.snapshot = snapshot;
-    if (!snapshot) return;
+    if (!snapshot) {
+      if (this.state.roundKey) this.reset(null);
+      return;
+    }
     const round = openRound(snapshot);
     if (!round) {
-      if (snapshot.phase === 'COMPLETED' || snapshot.phase === 'ABORTED')
-        this.reset(null);
+      if (this.state.roundKey) this.reset(null);
       return;
     }
     const key = keyOf(snapshot.matchId, round);
@@ -169,6 +171,14 @@ export class RoundAudioController {
       return;
     }
     this.patch({ replaysRemaining: this.commands.replaysRemaining });
+    // A committed schedule proves that both readiness commands were accepted,
+    // even when our readiness ACK was lost. Keep the local decoded-file proof.
+    if (
+      this.state.phase === 'decoded' &&
+      'schedule' in round &&
+      this.readyAttempts > 0
+    )
+      this.readyReported = true;
     if (this.state.phase === 'decoded') this.tryReady(round);
     if (
       (snapshot.phase === 'COUNTDOWN' || snapshot.phase === 'PLAYING_WORD') &&
@@ -203,6 +213,13 @@ export class RoundAudioController {
         return;
       }
       this.player = player;
+      const duration = player.status().durationMs;
+      if (
+        !Number.isFinite(duration) ||
+        Math.abs(duration - round.audio.clipDurationMs) > 100
+      ) {
+        throw new AudioFailure('DECODE_FAILED');
+      }
       this.playerConnectionGeneration = this.connection.connectionGeneration;
       this.unsubscribePlayer = player.subscribe((status) =>
         this.onStatus(status, generation, key),
@@ -229,6 +246,9 @@ export class RoundAudioController {
       return;
     this.readyInFlight = true;
     this.readyAttempts++;
+    const generation = this.generation;
+    const key = this.state.roundKey!;
+    const connectionGeneration = this.connection.connectionGeneration;
     const payload = {
       matchId: this.snapshot!.matchId,
       roundId: round.roundId,
@@ -237,6 +257,11 @@ export class RoundAudioController {
     void this.commands
       .reportDecodedAudio(payload)
       .then((reply) => {
+        if (
+          !this.isCurrent(generation, key) ||
+          connectionGeneration !== this.connection.connectionGeneration
+        )
+          return;
         if (!reply.error) {
           this.readyReported = true;
           this.update(this.snapshot);
@@ -244,7 +269,7 @@ export class RoundAudioController {
       })
       .catch(() => {})
       .finally(() => {
-        this.readyInFlight = false;
+        if (this.isCurrent(generation, key)) this.readyInFlight = false;
       });
   }
 
@@ -263,10 +288,8 @@ export class RoundAudioController {
     this.timer = setTimeout(
       () => {
         this.timer = null;
-        if (
-          !this.isCurrent(generation, key) ||
-          connectionGeneration !== this.connection.connectionGeneration
-        ) {
+        if (!this.isCurrent(generation, key)) return;
+        if (connectionGeneration !== this.connection.connectionGeneration) {
           void this.fail('APP_INACTIVE');
           return;
         }
@@ -319,7 +342,14 @@ export class RoundAudioController {
     key: string,
     attempt: number,
   ): Promise<void> {
-    if (!this.isCurrent(generation, key) || !this.snapshot) return;
+    if (
+      !this.isCurrent(generation, key) ||
+      !this.snapshot ||
+      !this.initialEnded ||
+      this.state.failure ||
+      this.connection.status !== 'ready'
+    )
+      return;
     const round = openRound(this.snapshot);
     if (!round) return;
     try {
@@ -332,7 +362,12 @@ export class RoundAudioController {
     } catch {
       return;
     }
-    if (!('schedule' in round) || attempt >= 12) return;
+    if (
+      !this.isCurrent(generation, key) ||
+      !('schedule' in round) ||
+      attempt >= 12
+    )
+      return;
     const now = this.connection.clock.now();
     if (now === null || now >= round.schedule.typingStartAt) return;
     setTimeout(
@@ -364,6 +399,7 @@ export class RoundAudioController {
       if (
         !this.foreground ||
         generation !== this.generation ||
+        !this.canType() ||
         !currentRound ||
         roundKey !== keyOf(this.snapshot!.matchId, currentRound)
       )
@@ -372,6 +408,7 @@ export class RoundAudioController {
       this.player.play();
       void this.commands.reportReplay(sequence).catch(() => {});
     } catch (error) {
+      if (generation !== this.generation) throw error;
       this.playbackKind = null;
       this.patch({ replaying: false });
       await this.fail(
@@ -430,6 +467,8 @@ export class RoundAudioController {
     )
       return;
     this.failureAttempts++;
+    const generation = this.generation;
+    const key = this.state.roundKey!;
     try {
       const reply = await this.commands.reportAudioFailed({
         matchId: snapshot.matchId,
@@ -437,7 +476,8 @@ export class RoundAudioController {
         audioVersion: round.audio.audioVersion,
         reason: code,
       });
-      if (!reply.error) this.failureReported = true;
+      if (this.isCurrent(generation, key) && !reply.error)
+        this.failureReported = true;
     } catch {
       // Failure reports are scoped best effort and never buffered offline.
     }

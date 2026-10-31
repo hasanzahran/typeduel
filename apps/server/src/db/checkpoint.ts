@@ -135,7 +135,7 @@ function upgradeLegacy(
 
 export function decodeCheckpoint(input: unknown): MatchState {
   let parsed: ReturnType<typeof CheckpointSchema.safeParse>;
-  let legacy = false;
+  let legacy: boolean;
   try {
     const old = LegacyCheckpointSchema.safeParse(input);
     legacy = old.success;

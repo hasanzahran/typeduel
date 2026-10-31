@@ -2,7 +2,7 @@
 
 **Date:** October 30, 2026
 
-**Status:** M0 formally accepted. M1 Increment 01 accepted and merged in PR #3 (`99910e5`). Increment 02 is accepted and merged in PR #4 (`f428f0d`). Increment 03 is accepted and merged in PR #5 (`8c29e2a`), with 300 automated tests including 102 real PostgreSQL/Socket.IO integration tests and green accepted-head CI. The coordinated [Increment 04 first-playable-pair plan](M1_INCREMENT_04_PLAN.md) includes production-quality acceptance gates and a maximum of two initial specialist workstreams; it is prepared for approval; implementation and audio generation have not begun.
+**Status:** M0 formally accepted. M1 Increment 01 accepted and merged in PR #3 (`99910e5`). Increment 02 is accepted and merged in PR #4 (`f428f0d`). Increment 03 is accepted and merged in PR #5 (`8c29e2a`), with 300 automated tests including 102 real PostgreSQL/Socket.IO integration tests and green accepted-head CI. The coordinated [Increment 04 first-playable-pair plan](M1_INCREMENT_04_PLAN.md) includes production-quality acceptance gates and a maximum of two initial specialist workstreams; the owner approved planning commit `64dfffb` and application implementation is in progress. Audio generation and physical acceptance remain pending. See `M1_INCREMENT_04_CONTRACT_FREEZE.md`.
 
 **Sources of truth:** TypeDuel PRD v0.4, System Design v1.2, UI/UX Design v1.0, plus the owner-approved M1 scope and development reconnect policy recorded below.
 
@@ -17,7 +17,7 @@ Use **Codex + VS Code + GitHub**, with a **pnpm TypeScript monorepo**. Each mile
 - PR #1 and PR #2 are merged; M0 is formally accepted. PR #2 merge commit is `26f8476ed900d4cfd17a97f229e0226ca7251c91`. Preserve the Android captures and owner-confirmed iPhone results in `M0_VERIFICATION.md`. Missing iOS screenshots and device/runtime/exact-build metadata remain documentation-only gaps, not fabricated passes.
 - The owner approved expanded M1 planning: real two-player gameplay, Socket.IO rooms, basic General-only matchmaking, authoritative scoring/timing/attempts, reviewed prerecorded audio, Classic/Challenge progression, snapshots/recovery and competitive-input evaluation. Core prototype work previously assigned to M2/M3/M5 is intentionally brought into M1; later milestones retain production content tooling, tuning, social/account features and release hardening.
 - Development reconnect policy is now approved: **10,000 ms grace**, server deadlines continue, and an unresolved disconnect interrupts an ongoing match with **no match winner/forfeit award**. This resolves the previously open development grace-expiry policy; production abandonment policy still requires review.
-- Implement through small, independently testable increments, separate commits and review checkpoints. Increments 01–03 are accepted. Preserve Socket.IO/client 4.8.4, jose 6.2.13, participant bindings and coordinated worktrees. The approved ephemeral PostgreSQL CI service remains in use. Increment 04 requires separate plan/dependency approval and bounded recording authorization. Pause at each increment's review checkpoint before moving on.
+- Implement through small, independently testable increments, separate commits and review checkpoints. Increments 01–03 are accepted. Preserve Socket.IO/client 4.8.4, jose 6.2.13, participant bindings and coordinated worktrees. The approved ephemeral PostgreSQL CI service remains in use. Increment 04 application/dependency implementation is approved subject to the existing release-age policy; bounded recording authorization remains separate. Pause at each increment's review checkpoint before moving on.
 - Preserve `minimumReleaseAge: 1440`, strict types, existing dependency/build-script policies and the approved UI/UX. Any gameplay-driven visual change needs explicit review. Do not provision external services, incur costs, generate large Polly batches or install large system dependencies without approval.
 - Start real audio integration with a small reviewed prerecorded set. Synthetic word/duration data in engine unit tests are test fixtures only, never an approved playable catalog or production client data.
 - Gboard predictions remain an accepted M0 limitation with resolution required for M1 competitive acceptance. Evaluate native alternatives and an accessible custom keyboard before choosing; implementation of a custom keyboard remains unapproved.
@@ -52,7 +52,7 @@ Acceptance:
 
 **Goal:** Two devices complete a real match with matching authoritative state and durable outcomes, using reviewed prerecorded audio and the approved Classic/Challenge rules.
 
-**Accepted implementation:** [Increment 03 — authenticated real-time multiplayer](M1_INCREMENT_03_PLAN.md). Increments 01–03 are accepted and merged. **Next:** [Increment 04 — first playable phone match](M1_INCREMENT_04_PLAN.md), awaiting owner approval.
+**Accepted implementation:** [Increment 03 — authenticated real-time multiplayer](M1_INCREMENT_03_PLAN.md). Increments 01–03 are accepted and merged. **Next:** [Increment 04 — first playable phone match](M1_INCREMENT_04_PLAN.md), approved for application implementation; physical acceptance pending.
 
 | Increment                             | Bounded deliverable                                                                                                                                              | Review checkpoint                                                                                                |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -121,11 +121,11 @@ Deliverables: real iOS/Android builds via Expo EAS, cross-platform two-phone smo
 
 Acceptance: zero inconsistent completed-match scores; all three gameplay restrictions exercised; sound and timer correct; app policies/privacy/account deletion met; product owner approves before any production publish.
 
-## Immediate next action — approve Increment 04
+## Immediate next action — validate Increment 04
 
 Review the coordinated [first playable phone match plan](M1_INCREMENT_04_PLAN.md), including exact files/worktrees, mandatory shared audio-completion gate, proposed common playback margin, SDK-compatible dependency pins and eight-clip recording request. Increment 03 is already accepted; do not repeat its architecture review. No automatic merge.
 
-After Increment 04 approval and contract freeze, Backend implements private reviewed-asset delivery and the authoritative completion gate while Mobile wires preflight, playback and minimal Game/Results bindings; QA independently tests failures and the physical pair. Content's [eight-candidate worksheet](M1_CONTENT_PREPARATION.md) requires owner editorial, voice and bounded recording approval before generation. Existing credentials, reachable authorized infrastructure and listened-to recordings are prerequisites, not completed work. The new plan records actual local two-socket component-demo results and commands for the existing PostgreSQL demonstration. Broader Home/Setup/lobby flows remain Increment 05; keyboard fairness remains required for M1 acceptance.
+With Increment 04 approval and contract freeze recorded, Backend implements private reviewed-asset delivery and the authoritative completion gate while Mobile wires preflight, playback and minimal Game/Results bindings; QA independently tests failures and the physical pair. Content's [eight-candidate worksheet](M1_CONTENT_PREPARATION.md) requires owner editorial, voice and bounded recording approval before generation. Existing credentials, reachable authorized infrastructure and listened-to recordings are prerequisites, not completed work. The new plan records actual local two-socket component-demo results and commands for the existing PostgreSQL demonstration. Broader Home/Setup/lobby flows remain Increment 05; keyboard fairness remains required for M1 acceptance.
 
 ## Useful official documentation
 

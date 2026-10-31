@@ -67,6 +67,7 @@ export function audioRoutes(
   }
 
   app.post('/v1/matches/:matchId/audio-access', async (request, reply) => {
+    reply.header('Cache-Control', 'private, no-store');
     let requestId: string | null = null;
     try {
       const params = parse(matchParams, request.params);
@@ -111,6 +112,7 @@ export function audioRoutes(
   });
 
   app.get('/v1/audio/:assetId/:audioVersion', async (request, reply) => {
+    reply.header('Cache-Control', 'private, no-store');
     try {
       const params = parse(assetParams, request.params);
       const query = parse(grantQuery, request.query);

@@ -576,13 +576,13 @@ export function applyCommand(
       state.phase === 'ACTIVE_TYPING'
     )
       return result;
-    else if (
-      !schedule ||
-      state.phase !== 'PLAYING_WORD' ||
-      context.receivedAtMonoMs <
-        schedule.playbackAt + state.round.audio.clipDurationMs
-    )
+    else if (!schedule || state.phase !== 'PLAYING_WORD')
       result.error = engineError('INVALID_PHASE');
+    else if (
+      context.receivedAtMonoMs <
+      schedule.playbackAt + state.round.audio.clipDurationMs
+    )
+      result.error = engineError('INVALID_TIME');
     else if (!participant.initialPlaybackCompleted) {
       participant.initialPlaybackCompleted = true;
       commit(result);
