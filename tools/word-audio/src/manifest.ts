@@ -75,6 +75,7 @@ export const ManifestSchema = z
     const words = new Set<string>(),
       ids = new Set<string>(),
       assets = new Set<string>();
+    const versions = new Set<string>();
     for (const entry of manifest.entries) {
       const a = entry.asset;
       let invalid =
