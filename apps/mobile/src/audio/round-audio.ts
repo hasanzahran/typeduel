@@ -62,6 +62,8 @@ export class RoundAudioController {
   private unsubscribePlayer: (() => void) | null = null;
   private abort: AbortController | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  private completionTimer: ReturnType<typeof setTimeout> | null = null;
+  private completionAcknowledged = false;
   private readyReported = false;
   private readyInFlight = false;
   private readyAttempts = 0;
@@ -104,6 +106,8 @@ export class RoundAudioController {
     this.abort = null;
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
+    if (this.completionTimer) clearTimeout(this.completionTimer);
+    this.completionTimer = null;
     this.unsubscribePlayer?.();
     this.unsubscribePlayer = null;
     this.player?.dispose();
@@ -119,6 +123,7 @@ export class RoundAudioController {
     this.readyInFlight = false;
     this.readyAttempts = 0;
     this.initialEnded = false;
+    this.completionAcknowledged = false;
     this.failureReported = false;
     this.failureAttempts = 0;
     this.playerConnectionGeneration = -1;
@@ -165,6 +170,12 @@ export class RoundAudioController {
       // A completed initial ledger survives an ordinary reconnect. Future
       // replay callbacks bind to the newly synchronized connection generation.
       this.playerConnectionGeneration = this.connection.connectionGeneration;
+      if (snapshot.phase === 'COUNTDOWN' || snapshot.phase === 'PLAYING_WORD') {
+        this.completionAcknowledged = false;
+        if (this.completionTimer) clearTimeout(this.completionTimer);
+        this.completionTimer = null;
+        void this.reportCompletion(this.generation, key, 0);
+      }
     }
     if (this.state.phase === 'failed') {
       void this.reportFailure();
@@ -346,34 +357,48 @@ export class RoundAudioController {
       !this.isCurrent(generation, key) ||
       !this.snapshot ||
       !this.initialEnded ||
+      this.completionAcknowledged ||
       this.state.failure ||
       this.connection.status !== 'ready'
     )
       return;
     const round = openRound(this.snapshot);
-    if (!round) return;
+    if (!round || !('schedule' in round)) return;
+    const now = this.connection.clock.now();
+    if (now === null || now >= round.schedule.typingStartAt || attempt >= 12)
+      return;
+    // Do not wait for the transport's five-second timeout: the shared gate is
+    // only one second after clip end. These bounded, volatile duplicates carry
+    // the same real completion proof and can never extend the server window.
+    this.completionTimer = setTimeout(
+      () => {
+        this.completionTimer = null;
+        void this.reportCompletion(generation, key, attempt + 1);
+      },
+      Math.min(100, round.schedule.typingStartAt - now),
+    );
+    const connectionGeneration = this.connection.connectionGeneration;
     try {
       const reply = await this.commands.reportAudioCompleted({
         matchId: this.snapshot.matchId,
         roundId: round.roundId,
         audioVersion: round.audio.audioVersion,
       });
-      if (!reply.error || reply.error.code !== 'INVALID_TIME') return;
+      if (
+        !this.isCurrent(generation, key) ||
+        connectionGeneration !== this.connection.connectionGeneration
+      )
+        return;
+      if (!reply.error) {
+        this.completionAcknowledged = true;
+        if (this.completionTimer) clearTimeout(this.completionTimer);
+        this.completionTimer = null;
+      }
     } catch {
+      // A transient loss can use the already scheduled retry only while this
+      // live scope and unchanged server window remain valid; never buffer offline.
       return;
     }
-    if (
-      !this.isCurrent(generation, key) ||
-      !('schedule' in round) ||
-      attempt >= 12
-    )
-      return;
-    const now = this.connection.clock.now();
-    if (now === null || now >= round.schedule.typingStartAt) return;
-    setTimeout(
-      () => void this.reportCompletion(generation, key, attempt + 1),
-      Math.min(100, round.schedule.typingStartAt - now),
-    );
   }
 
   async replay(): Promise<void> {

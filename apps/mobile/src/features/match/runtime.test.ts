@@ -63,6 +63,17 @@ beforeEach(() => {
 });
 afterEach(() => runtime.dispose());
 
+test('rejects plaintext phone backends before creating an authenticated connection', () => {
+  const calls = jest.mocked(MatchConnection).mock.calls.length;
+  expect(
+    () =>
+      new MatchRuntime('http://192.168.1.2:3000', {
+        getAccessToken: async () => 'unused',
+      }),
+  ).toThrow('Live phone matches require HTTPS');
+  expect(jest.mocked(MatchConnection).mock.calls).toHaveLength(calls);
+});
+
 test('deliberate retry after a lost ACK sends the original attempt ID', async () => {
   send
     .mockRejectedValueOnce(new Error('timeout'))

@@ -42,6 +42,8 @@ export class MatchRuntime {
   } | null = null;
 
   constructor(baseUrl: string, tokenProvider: TokenProvider) {
+    if (new URL(baseUrl).protocol !== 'https:')
+      throw new Error('Live phone matches require HTTPS');
     this.connection = new MatchConnection({
       baseUrl,
       tokenProvider,

@@ -400,3 +400,57 @@ test('a new round fences an old pending replay without poisoning the new round',
   expect(controller.current.failure).toBeNull();
   expect(player.play).toHaveBeenCalledTimes(1);
 });
+
+test('a lost completion send is retried before the short shared gate without waiting for transport timeout', async () => {
+  commands.reportAudioCompleted.mockImplementationOnce(
+    () => new Promise(() => {}),
+  );
+  controller.update(snapshot('PREPARING_ROUND'));
+  await flush();
+  controller.update(snapshot('COUNTDOWN'));
+  jest.runOnlyPendingTimers();
+  serverNow = 1400;
+  listener?.({
+    loaded: true,
+    playing: false,
+    ended: true,
+    failed: false,
+    reset: false,
+    durationMs: 500,
+    positionMs: 500,
+  });
+  await flush();
+  expect(commands.reportAudioCompleted).toHaveBeenCalledTimes(1);
+  jest.advanceTimersByTime(50);
+  serverNow = 1450;
+  jest.advanceTimersByTime(50);
+  await flush();
+  expect(commands.reportAudioCompleted).toHaveBeenCalledTimes(2);
+  expect(player.play).toHaveBeenCalledTimes(1);
+  jest.advanceTimersByTime(500);
+  await flush();
+  expect(commands.reportAudioCompleted).toHaveBeenCalledTimes(2);
+});
+
+test('completion retransmission stops at typingStartAt even with every ACK missing', async () => {
+  commands.reportAudioCompleted.mockImplementation(() => new Promise(() => {}));
+  controller.update(snapshot('PREPARING_ROUND'));
+  await flush();
+  controller.update(snapshot('COUNTDOWN'));
+  jest.runOnlyPendingTimers();
+  serverNow = 1450;
+  listener?.({
+    loaded: true,
+    playing: false,
+    ended: true,
+    failed: false,
+    reset: false,
+    durationMs: 500,
+    positionMs: 500,
+  });
+  await flush();
+  serverNow = 1500;
+  jest.advanceTimersByTime(1000);
+  await flush();
+  expect(commands.reportAudioCompleted).toHaveBeenCalledTimes(1);
+});
