@@ -22,7 +22,7 @@
     "build:contracts": "pnpm --filter @typeduel/contracts build",
     "typecheck": "pnpm build:contracts && pnpm -r typecheck",
     "test": "pnpm build:contracts && pnpm -r test",
-    "build": "pnpm build:contracts && pnpm --filter @typeduel/server build && pnpm --filter @typeduel/mobile build && node scripts/check-release.mjs",
+    "build": "pnpm build:contracts && pnpm --filter @typeduel/server build && pnpm --filter @typeduel/mobile build && node scripts/check-release.mjs && pnpm --filter @typeduel/word-audio build",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "expo:check": "pnpm --filter @typeduel/mobile exec expo install --check && pnpm --filter @typeduel/mobile exec expo-doctor",
     "test:integration": "pnpm build:contracts && pnpm --filter @typeduel/server test:integration"

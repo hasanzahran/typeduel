@@ -119,3 +119,9 @@ Remaining blockers are actual provenance decisions, editor/listener availability
 Verification performed: inspected the repository for game MP3/WAV/M4A assets and catalog/manifest files; read the nine linked primary dictionary text entries; checked the eight-row worksheet against the approved PRD and Increment 03 plan; verified document formatting. No source/provider license determination, human listening, audio measurement, provider call, upload or native test was performed.
 
 Next small step: the owner/editor completes the eight candidate decisions and provenance/rights fields, selects the single voice configuration and reviews the bounded eight-request proposal. In parallel, Backend prepares authorized opaque delivery/source eligibility and Mobile/QA prepare exact-version decoding and the common slow-database/late-start gate for Increment 04. Keep the first physical pair separate from full M1 reachability and the 600-membership beta target.
+
+## Increment 04 implementation update — approval still pending
+
+The bounded offline tool now lives at `tools/word-audio/`; see its README for exact request hash, account confirmation, private approval record and ledger behavior. Candidate and recording approvals in the table above remain pending. The proposed configuration is now concrete: Joanna / Neural / en-US / us-east-1 / MP3 / 24 kHz; eight attempts, 29 characters, estimated synthesis US$0.000464, proposed ceiling US$0.01. No request has been sent and no audio has been generated.
+
+The owner approved application implementation, not this recording batch. Tool tests use synthetic bytes and fake approvals strictly inside temporary test directories. The private manifest compatibility fixture is not editorial evidence. Named owner/editorial, rights and exact-final-file listening decisions are still required. `afconvert`/PCM validation is implemented, but has not measured actual approved clips. Physical audio timing remains unverified.

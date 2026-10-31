@@ -7,7 +7,18 @@ const config: ExpoConfig = {
   orientation: 'portrait',
   userInterfaceStyle: 'dark',
   backgroundColor: '#0B1220',
-  plugins: ['expo-router'],
+  plugins: [
+    'expo-router',
+    [
+      'expo-audio',
+      {
+        microphonePermission: false,
+        recordAudioAndroid: false,
+        enableBackgroundRecording: false,
+        enableBackgroundPlayback: false,
+      },
+    ],
+  ],
   ios: { supportsTablet: false },
   android: { softwareKeyboardLayoutMode: 'resize' },
   web: { bundler: 'metro', output: 'single', name: 'TypeDuel M0' },

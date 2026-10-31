@@ -1,6 +1,6 @@
 # M1 Increment 04 — First playable phone match
 
-**Status:** Production-quality, cost-conscious coordinated proposal, awaiting owner approval. No Increment 04 application code, dependencies, recordings or services have been created.
+**Status:** Owner approved planning commit `64dfffb`; Increment 04 implementation is in progress. Recording generation, infrastructure provisioning and physical acceptance remain pending. See `M1_INCREMENT_04_CONTRACT_FREEZE.md` for implementation interfaces.
 
 **Baseline:** PR #5 accepted and merged at `8c29e2a83c43dfa8dea284a10e33589e3247a6ba`. Planning branch: `codex/m1-04-plan`. Reviewed October 30, 2026 against AGENTS.md, the approved PRD, System Design, UI/UX, Increment 03 contracts and its mobile/content handoff. This continues the approved architecture; it does not reopen it.
 
