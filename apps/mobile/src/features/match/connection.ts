@@ -125,6 +125,8 @@ const replies = {
   'match.sync': MatchSyncReplySchema,
   'answer.submit': GameplayReplySchema,
   'round.audio_ready': GameplayReplySchema,
+  'round.audio_completed': GameplayReplySchema,
+  'round.audio_failed': GameplayReplySchema,
   'round.replay_used': GameplayReplySchema,
   'clock.ping': ClockReplySchema,
 };
