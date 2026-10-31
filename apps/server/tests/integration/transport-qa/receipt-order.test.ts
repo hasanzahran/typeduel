@@ -60,9 +60,21 @@ describe('socket ingress order rather than asynchronous processing time', () => 
       a.request<GameplayReplyData>('round.audio_completed', readyPayload),
     );
     await gate.reached;
+    const secondAdmission = deferred<number>();
+    // This hook runs after registry.command synchronously captures the FIFO receipt.
+    h.setAdmissionObserver((event) => {
+      if (
+        event.event === 'round.audio_completed' &&
+        event.playerId === b.playerId &&
+        event.matchId === matchId
+      )
+        secondAdmission.resolve(h!.clock.monoNow());
+    });
     const second = settle(
       b.request<GameplayReplyData>('round.audio_completed', readyPayload),
     );
+    const secondReceivedAt = await secondAdmission.promise;
+    expect(secondReceivedAt).toBeLessThan(schedule.typingStartAt);
     h.clock.set(schedule.typingStartAt, true);
     expect(
       (await h.store.readCommitted(matchId))!.state.participants.map(
