@@ -17,6 +17,9 @@ for (const file of files) {
     'qa-secret-',
     'qa-variant-',
     'qa-private-guess-',
+    'TYPE_DUEL_PRIVATE_AUDIO_FIXTURE_',
+    'TYPE_DUEL_M1_PLAYTEST_SENTINEL',
+    'qa-fixture-',
   ])
     if (content.includes(marker))
       throw new Error('Development fixture leaked: ' + file);

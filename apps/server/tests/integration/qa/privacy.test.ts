@@ -114,6 +114,22 @@ describe('committed actor payload privacy and version coherence', () => {
     const schedule = scheduled.state.round!.monoSchedule!;
     s.clock.set(schedule.playbackAt);
     await actor.wake();
+    s.clock.set(
+      schedule.playbackAt + scheduled.state.round!.audio.clipDurationMs,
+    );
+    for (const player of [a, b]) {
+      await actor.acceptPlayerCommand(
+        { playerId: player.playerId },
+        {
+          type: 'round.audio_completed',
+          payload: {
+            matchId: s.record.state.matchId,
+            roundId: descriptor.roundId,
+            audioVersion: descriptor.audio.audioVersion,
+          },
+        },
+      );
+    }
     s.clock.set(schedule.typingStartAt);
     await actor.wake();
     const attemptA = randomUUID();

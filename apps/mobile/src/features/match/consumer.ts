@@ -4,6 +4,7 @@ import {
   type CommittedMatchUpdate,
   type GameplayEvent,
   type MatchSnapshot,
+  type RoundResult,
   type SessionScope,
   type SessionState,
 } from '@typeduel/contracts';
@@ -52,6 +53,7 @@ export class MatchConsumer {
   private synchronized = false;
   private session: SessionState | null = null;
   private effects: GameplayEvent[] = [];
+  private results = new Map<string, RoundResult>();
   private seenEffects = new Set<string>();
   private listeners = new Set<() => void>();
 
@@ -86,6 +88,19 @@ export class MatchConsumer {
     return this.session?.admission.kind === 'match'
       ? copy(this.session.admission.update.snapshot)
       : null;
+  }
+  get receivedResults(): RoundResult[] {
+    return copy(
+      [...this.results.values()].sort((a, b) => a.roundNumber - b.roundNumber),
+    );
+  }
+  clear(): void {
+    this.session = null;
+    this.synchronized = false;
+    this.effects = [];
+    this.results.clear();
+    this.seenEffects.clear();
+    this.notify();
   }
   takeEffects(): GameplayEvent[] {
     const effects = this.effects;
@@ -145,6 +160,7 @@ export class MatchConsumer {
       this.consumeEffects(next.admission.update, previous);
     else {
       this.effects = [];
+      this.results.clear();
       this.seenEffects.clear();
     }
     this.notify();
@@ -185,8 +201,24 @@ export class MatchConsumer {
     if (!snapshot) return;
     if (previous?.matchId !== snapshot.matchId) {
       this.seenEffects.clear();
+      this.results.clear();
       this.effects = [];
     }
+    const retain = (result: RoundResult) => {
+      if (
+        result.roundNumber > snapshot.roundNumber ||
+        this.results.has(result.roundId)
+      )
+        return;
+      if (this.results.size < 8) this.results.set(result.roundId, copy(result));
+    };
+    if ('result' in snapshot) retain(snapshot.result);
+    if (snapshot.phase === 'ABORTED' && snapshot.lastResult)
+      retain(snapshot.lastResult);
+    for (const batch of update.batches)
+      for (const event of batch.events) {
+        if (event.type === 'round.result') retain(event.payload);
+      }
     this.effects = this.effects.filter((event) => applicable(event, snapshot));
     for (const batch of update.batches) {
       for (const event of batch.events) {

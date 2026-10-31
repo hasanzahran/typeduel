@@ -181,6 +181,27 @@ test('replay recovery is conservative when telemetry ACK is lost', async () => {
   await expect(commands.reportReplay(2)).rejects.toThrow();
   expect(commands.replaysRemaining).toBe(0);
 });
+test('replay reservation consumes both local credits before playback uncertainty', () => {
+  expect(commands.reserveReplay()).toBe(1);
+  expect(commands.replaysRemaining).toBe(1);
+  expect(commands.reserveReplay()).toBe(2);
+  expect(commands.replaysRemaining).toBe(0);
+  expect(() => commands.reserveReplay()).toThrow();
+  snapshot.stateVersion = 2;
+  snapshot.viewer.replaysRemaining = 2;
+  apply();
+  expect(commands.replaysRemaining).toBe(0);
+});
+test('audio completion and allowlisted failure use distinct command branches', async () => {
+  request.mockResolvedValue({ ack: null, error: null });
+  const identity = { matchId: id(3), roundId: id(4), audioVersion: id(6) };
+  await commands.reportAudioCompleted(identity);
+  await commands.reportAudioFailed({ ...identity, reason: 'PLAYBACK_FAILED' });
+  expect(request.mock.calls).toEqual([
+    ['round.audio_completed', identity],
+    ['round.audio_failed', { ...identity, reason: 'PLAYBACK_FAILED' }],
+  ]);
+});
 test('audio readiness is explicit and bound to the current decoded version', async () => {
   const payload = { matchId: id(3), roundId: id(4), audioVersion: id(6) };
   await expect(commands.reportDecodedAudio(payload)).rejects.toMatchObject({

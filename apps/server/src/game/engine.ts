@@ -3,6 +3,8 @@ import {
   AnswerSubmitSchema,
   AudioDescriptorSchema,
   AudioReadySchema,
+  AudioCompletedSchema,
+  AudioFailedSchema,
   CategorySchema,
   DifficultySchema,
   MatchSetupSchema,
@@ -23,6 +25,7 @@ import {
   nextLevel,
   normalizeAnswer,
   RECONNECT_GRACE_MS,
+  PREFLIGHT_TIMEOUT_MS,
   safeAdd,
   toUtc,
 } from './rules.js';
@@ -43,7 +46,7 @@ const text = z
   .string()
   .min(1)
   .max(MAX_ANSWER_LENGTH)
-  .refine((s) => s.trim().length > 0);
+  .refine((s) => s.trim().length > 0 && s.length <= MAX_ANSWER_LENGTH);
 const descriptorSchema = z.strictObject({
   roundId: z.uuid(),
   wordId: z.uuid(),
@@ -89,6 +92,7 @@ export function createMatch(options: CreateMatchOptions): MatchState {
     connected: true,
     graceDeadlineMonoMs: null,
     ready: false,
+    initialPlaybackCompleted: false,
     attemptsUsed: 0,
     replaySequences: [],
   });
@@ -171,7 +175,7 @@ function closeRound(result: TransitionResult, winnerId: string | null): void {
 }
 function abort(
   result: TransitionResult,
-  reason: 'DISCONNECT_TIMEOUT' | 'SOURCE_UNAVAILABLE',
+  reason: 'DISCONNECT_TIMEOUT' | 'SOURCE_UNAVAILABLE' | 'AUDIO_UNAVAILABLE',
 ): void {
   result.state.phase = 'ABORTED';
   result.state.interruption = { reason };
@@ -210,6 +214,11 @@ export function getNextWakeAt(state: MatchState): number | null {
   const due = state.participants.flatMap((p) =>
     p.graceDeadlineMonoMs === null ? [] : [p.graceDeadlineMonoMs],
   );
+  if (
+    state.phase === 'PREPARING_ROUND' &&
+    state.round?.preflightDeadlineMonoMs != null
+  )
+    due.push(state.round.preflightDeadlineMonoMs);
   const schedule = state.round?.monoSchedule;
   if (schedule) {
     if (state.phase === 'COUNTDOWN') due.push(schedule.playbackAt);
@@ -226,12 +235,18 @@ function drainDue(result: TransitionResult, throughMonoMs: number): void {
     // The earliest unresolved grace wins every equal-time collision.
     if (state.participants.some((p) => p.graceDeadlineMonoMs === at)) {
       abort(result, 'DISCONNECT_TIMEOUT');
+    } else if (state.phase === 'PREPARING_ROUND') {
+      abort(result, 'AUDIO_UNAVAILABLE');
     } else if (state.phase === 'COUNTDOWN') {
       state.phase = 'PLAYING_WORD';
       commit(result);
     } else if (state.phase === 'PLAYING_WORD') {
-      state.phase = 'ACTIVE_TYPING';
-      commit(result);
+      if (!state.participants.every((p) => p.initialPlaybackCompleted))
+        abort(result, 'AUDIO_UNAVAILABLE');
+      else {
+        state.phase = 'ACTIVE_TYPING';
+        commit(result);
+      }
     } else if (state.phase === 'ACTIVE_TYPING') {
       closeRound(result, null);
     }
@@ -442,17 +457,33 @@ export function applyCommand(
       result.error = engineError('INVALID_DESCRIPTOR');
       return result;
     }
+    const preflightDeadlineMonoMs = safeAdd(
+      context.receivedAtMonoMs,
+      PREFLIGHT_TIMEOUT_MS,
+    );
+    if (
+      preflightDeadlineMonoMs === null ||
+      !isSafeTime(
+        state.clockAnchor.utcEpochMs +
+          (preflightDeadlineMonoMs - state.clockAnchor.monoMs),
+      )
+    ) {
+      result.error = engineError('TIME_OVERFLOW');
+      return result;
+    }
     state.roundNumber += 1;
     state.round = {
       ...parsed.data,
       roundNumber: state.roundNumber,
       monoSchedule: null,
+      preflightDeadlineMonoMs,
     };
     state.usedWordIds.push(parsed.data.wordId);
     state.usedRoundIds.push(parsed.data.roundId);
     state.phase = 'PREPARING_ROUND';
     for (const p of state.participants) {
       p.ready = false;
+      p.initialPlaybackCompleted = false;
       p.attemptsUsed = 0;
       p.replaySequences = [];
     }
@@ -487,6 +518,8 @@ export function applyCommand(
     participant.connected = false;
     participant.graceDeadlineMonoMs = deadline;
     if (state.phase === 'PREPARING_ROUND') participant.ready = false;
+    if (['PREPARING_ROUND', 'COUNTDOWN', 'PLAYING_WORD'].includes(state.phase))
+      participant.initialPlaybackCompleted = false;
     commit(result);
     return result;
   }
@@ -500,7 +533,11 @@ export function applyCommand(
   const parsed =
     command.type === 'round.audio_ready'
       ? AudioReadySchema.safeParse(command.payload)
-      : ReplayUsedSchema.safeParse(command.payload);
+      : command.type === 'round.audio_completed'
+        ? AudioCompletedSchema.safeParse(command.payload)
+        : command.type === 'round.audio_failed'
+          ? AudioFailedSchema.safeParse(command.payload)
+          : ReplayUsedSchema.safeParse(command.payload);
   if (!parsed.success) {
     result.error = engineError('INVALID_COMMAND');
     return result;
@@ -517,7 +554,42 @@ export function applyCommand(
     result.error = engineError('DISCONNECTED');
     return result;
   }
-  if ('audioVersion' in parsed.data) {
+  if (
+    'audioVersion' in parsed.data &&
+    parsed.data.audioVersion !== state.round.audio.audioVersion
+  ) {
+    result.error = engineError('WRONG_ASSET');
+    return result;
+  }
+  if (command.type === 'round.audio_failed') {
+    if (state.phase === 'ROUND_RESULT')
+      result.error = engineError('ROUND_CLOSED');
+    else abort(result, 'AUDIO_UNAVAILABLE');
+    return result;
+  }
+  if (command.type === 'round.audio_completed') {
+    const schedule = state.round.monoSchedule;
+    if (state.phase === 'ROUND_RESULT')
+      result.error = engineError('ROUND_CLOSED');
+    else if (
+      participant.initialPlaybackCompleted &&
+      state.phase === 'ACTIVE_TYPING'
+    )
+      return result;
+    else if (!schedule || state.phase !== 'PLAYING_WORD')
+      result.error = engineError('INVALID_PHASE');
+    else if (
+      context.receivedAtMonoMs <
+      schedule.playbackAt + state.round.audio.clipDurationMs
+    )
+      result.error = engineError('INVALID_TIME');
+    else if (!participant.initialPlaybackCompleted) {
+      participant.initialPlaybackCompleted = true;
+      commit(result);
+    }
+    return result;
+  }
+  if (command.type === 'round.audio_ready' && 'audioVersion' in parsed.data) {
     if (state.phase !== 'PREPARING_ROUND') {
       // An acknowledged duplicate cannot restart an already scheduled round.
       if (
@@ -570,6 +642,7 @@ export function applyCommand(
       }
       participant.ready = true;
       state.round.monoSchedule = { playbackAt, typingStartAt, deadlineAt };
+      state.round.preflightDeadlineMonoMs = null;
       state.phase = 'COUNTDOWN';
       const schedule = {
         playbackAt: toUtc(state.clockAnchor, playbackAt),
@@ -594,7 +667,10 @@ export function applyCommand(
     result.error = engineError('NOT_TYPING');
     return result;
   }
-  if (!participant.replaySequences.includes(parsed.data.replaySequence)) {
+  if (
+    'replaySequence' in parsed.data &&
+    !participant.replaySequences.includes(parsed.data.replaySequence)
+  ) {
     participant.replaySequences.push(parsed.data.replaySequence);
     commit(result);
   }

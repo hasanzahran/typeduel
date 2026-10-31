@@ -38,7 +38,7 @@ test('ignores unsolicited, duplicated and wall-jump samples', () => {
   expect(clock.receive(pong)).toBe(false);
   expect(clock.now()).toBeNull();
 });
-test('uses lower RTT estimates, expires stale samples and requires new samples after resume', () => {
+test('uses lower RTT estimates, expires them after ten seconds and requires a new sample after resume', () => {
   clock.start(id);
   mono += 100;
   wall += 100;
@@ -58,7 +58,7 @@ test('uses lower RTT estimates, expires stale samples and requires new samples a
     serverSentAt: 10000,
   });
   expect(clock.now()).toBe(2550);
-  mono += 60_001;
+  mono += 10_001;
   expect(clock.now()).toBeNull();
   clock.start(id);
   clock.invalidate();
@@ -69,6 +69,52 @@ test('uses lower RTT estimates, expires stale samples and requires new samples a
       serverSentAt: 2000,
     }),
   ).toBe(false);
+});
+test('keeps a newer qualifying sample when the lowest RTT sample expires', () => {
+  clock.start(id);
+  mono += 20;
+  wall += 20;
+  clock.receive({
+    requestId: id,
+    serverReceivedAt: 2000,
+    serverSentAt: 2000,
+  });
+  const newerId = '00000000-0000-4000-8000-000000000002';
+  mono += 9000;
+  wall += 9000;
+  clock.start(newerId);
+  mono += 100;
+  wall += 100;
+  clock.receive({
+    requestId: newerId,
+    serverReceivedAt: 11100,
+    serverSentAt: 11100,
+  });
+  expect(clock.quality()?.uncertaintyMs).toBe(10);
+  mono += 901;
+  expect(clock.quality()).toMatchObject({ uncertaintyMs: 50 });
+});
+test('rejects a sample after a wall-clock discontinuity without dropping prior good samples', () => {
+  clock.start(id);
+  mono += 20;
+  wall += 20;
+  clock.receive({
+    requestId: id,
+    serverReceivedAt: 2000,
+    serverSentAt: 2000,
+  });
+  const next = '00000000-0000-4000-8000-000000000002';
+  clock.start(next);
+  mono += 20;
+  wall += 1000;
+  expect(
+    clock.receive({
+      requestId: next,
+      serverReceivedAt: 3000,
+      serverSentAt: 3000,
+    }),
+  ).toBe(false);
+  expect(clock.now()).not.toBeNull();
 });
 test('rejects processing longer than observed round trip and backwards monotonic time', () => {
   clock.start(id);

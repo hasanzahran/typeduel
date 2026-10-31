@@ -11,8 +11,10 @@ import {
 } from '../../src/db/types.js';
 import type { MatchState } from '../../src/game/types.js';
 import {
+  createRoundDescriptor,
   createFixtureMatch,
-  prepareReadyRound,
+  prepareReadyRound as prepareCountdownRound,
+  preparePlayableRound as prepareReadyRound,
   submit,
   tickAt,
 } from './fixtures.js';
@@ -128,6 +130,59 @@ function harness(state?: MatchState) {
 }
 
 describe('serialized authoritative actor', () => {
+  it('preserves timely completion FIFO across a slow commit at the fixed gate', async () => {
+    const initial = createFixtureMatch();
+    const prepared = prepareCountdownRound(initial, {
+      descriptor: createRoundDescriptor(initial),
+    });
+    const playing = tickAt(
+      prepared.state,
+      prepared.monoSchedule.playbackAt,
+    ).state;
+    const h = harness(playing);
+    const gate = deferred();
+    vi.mocked(h.store.commitTransition).mockImplementationOnce(
+      async (input) => {
+        await gate.promise;
+        return h.save(input);
+      },
+    );
+    const actor = h.actor();
+    const round = playing.round!;
+    const payload = {
+      matchId: playing.matchId,
+      roundId: round.roundId,
+      audioVersion: round.audio.audioVersion,
+    };
+    h.now = prepared.monoSchedule.playbackAt + round.audio.clipDurationMs;
+    const first = actor.acceptPlayerCommand(
+      { playerId: playing.participants[0].playerId },
+      { type: 'round.audio_completed', payload },
+    );
+    h.now = prepared.monoSchedule.typingStartAt - 1;
+    const second = actor.acceptPlayerCommand(
+      { playerId: playing.participants[1].playerId },
+      { type: 'round.audio_completed', payload },
+    );
+    h.now = prepared.monoSchedule.typingStartAt;
+    const wake = [...h.timers][0];
+    if (!wake) throw new Error('Expected fixed typing gate');
+    h.timers.clear();
+    wake();
+    gate.release();
+    expect((await first).error).toBeNull();
+    expect((await second).error).toBeNull();
+    await actor.reconcile();
+    expect(h.record.state.phase).toBe('ACTIVE_TYPING');
+    expect(h.record.state.interruption).toBeNull();
+    expect(
+      h.record.state.participants.every(
+        (participant) => participant.initialPlaybackCompleted,
+      ),
+    ).toBe(true);
+    actor.close();
+  });
+
   it('sanitizes throwing admission objects and does not persist malformed commands', async () => {
     const h = harness();
     const actor = h.actor();

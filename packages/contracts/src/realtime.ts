@@ -3,11 +3,15 @@ import {
   AnswerAckSchema,
   AnswerSubmitSchema,
   AudioReadySchema,
+  AudioCompletedSchema,
+  AudioFailedSchema,
   ReplayUsedSchema,
   MatchSnapshotSchema,
   TransitionBatchSchema,
   type AnswerSubmit,
   type AudioReady,
+  type AudioCompleted,
+  type AudioFailed,
   type ReplayUsed,
 } from './gameplay.js';
 import { MatchSetupSchema, QuickMatchSetupSchema } from './setup.js';
@@ -240,6 +244,14 @@ export interface ClientToServerEvents {
     request: AudioReady,
     ack: Ack<GameplayReplyData>,
   ) => void;
+  'round.audio_completed': (
+    request: AudioCompleted,
+    ack: Ack<GameplayReplyData>,
+  ) => void;
+  'round.audio_failed': (
+    request: AudioFailed,
+    ack: Ack<GameplayReplyData>,
+  ) => void;
   'round.replay_used': (
     request: ReplayUsed,
     ack: Ack<GameplayReplyData>,
@@ -256,5 +268,7 @@ export interface ServerToClientEvents {
 export const GameplayRequestSchemas = {
   'answer.submit': AnswerSubmitSchema,
   'round.audio_ready': AudioReadySchema,
+  'round.audio_completed': AudioCompletedSchema,
+  'round.audio_failed': AudioFailedSchema,
   'round.replay_used': ReplayUsedSchema,
 } as const;

@@ -211,9 +211,21 @@ importers:
       expo:
         specifier: 58.0.21
         version: 58.0.21(@babel/core@7.29.7(supports-color@8.1.1))(@expo/metro-runtime@58.0.15)(expo-router@58.0.28)(react-dom@19.3.0(react@19.3.0))(react-native-web@0.21.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-native-worklets@0.13.0(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)(supports-color@8.1.1))(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)(supports-color@8.1.1)(typescript@6.0.3)
+      expo-asset:
+        specifier: 58.0.19
+        version: 58.0.19(expo@58.0.21)(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)(supports-color@8.1.1)(typescript@6.0.3)
+      expo-audio:
+        specifier: 58.0.10
+        version: 58.0.10(expo-asset@58.0.19(expo@58.0.21)(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)(supports-color@8.1.1)(typescript@6.0.3))(expo@58.0.21)(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)
       expo-constants:
         specifier: 58.0.14
         version: 58.0.14(expo@58.0.21)(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
+      expo-crypto:
+        specifier: 58.0.7
+        version: 58.0.7(expo@58.0.21)
+      expo-file-system:
+        specifier: 58.0.13
+        version: 58.0.13(expo@58.0.21)(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))
       expo-font:
         specifier: 58.0.11
         version: 58.0.11(expo@58.0.21)(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)
@@ -359,6 +371,28 @@ importers:
         specifier: 5.0.5
         version: 5.0.5(@types/node@24.10.0)(jsdom@26.1.0(supports-color@8.1.1))(vite@8.3.5(@types/node@24.10.0)(esbuild@0.28.2)(terser@5.51.2)(tsx@4.23.15))
 
+  tools/word-audio:
+    dependencies:
+      '@aws-sdk/client-polly':
+        specifier: 3.1159.0
+        version: 3.1159.0
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@typeduel/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@types/node':
+        specifier: 24.10.0
+        version: 24.10.0
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.0.5
+        version: 5.0.5(@types/node@24.10.0)(jsdom@26.1.0(supports-color@8.1.1))(vite@8.3.5(@types/node@24.10.0)(esbuild@0.28.2)(terser@5.51.2)(tsx@4.23.15))
+
 packages:
 
   2g@1.0.1:
@@ -372,6 +406,78 @@ packages:
 
   '@asamuzakjp/css-color@3.2.0':
     resolution: {integrity: sha512-K1A6z8tS3XsmCMM86xoWdn7Fkdn9m6RSVtocUrJYIwZnFVkng/PvkEoWtOWmP+Scc6saYWHWZYbndEEXxl24jw==}
+
+  '@aws-sdk/client-polly@3.1159.0':
+    resolution: {integrity: sha512-YgZxwTd5H2buCZk+n+mKOk9VOj6Zvw2TeNC0yDSR1OX5ovenPRb2RpUVXdmaHqsfKqyUnPHCbM3mrxdVTYKDDA==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/core@3.979.0':
+    resolution: {integrity: sha512-E3eeLhIOxlIc9NPsZbtpHuk8W/gEZ3YvFauNPrrrtNtF7Pq1cwSrFwA51Z1EIoUY6VFvTyltyLRNUhaa0aSKSA==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/credential-provider-env@3.972.79':
+    resolution: {integrity: sha512-fhfGcGiY70EcH9H8N/K+K2NMW3wF2J/7slHYJo0u1mF7XBpU7dlaJ8xmc0jBYUzJLRbKz4+BtVwwqrH7eZNTNw==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/credential-provider-http@3.972.81':
+    resolution: {integrity: sha512-bp2TG0g2seN4LMEOjIVxkDpb/ls4GsDiguteIFxxQUxFBoyhf0pmfGbZCddHORrg58K72c+7CMlaDEw921c/3Q==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/credential-provider-ini@3.973.24':
+    resolution: {integrity: sha512-ULdPVLKR46qGsVCmbilDWWcry5qAR8nYm7RZewaNtCvVLPSIyb9zSWabTA9M07s10ZpEPUl67rcORyXE50Obog==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/credential-provider-login@3.972.86':
+    resolution: {integrity: sha512-e6cD5PUesauIYxV4IaOLNfEh0FnhUeIxnY4AZzmEH9PsPGpScROmrdzA0MaaCxiDVzGPtxcJW7Ku7vKU+w2p9Q==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/credential-provider-node@3.972.91':
+    resolution: {integrity: sha512-0j1oy7cFwsMaIpueqFGeQG0VpulcF61ucKKqZUha9rZXvRK91chmAxFfov6Q155TerBGgt1dvy9n9Y3O4HD/UQ==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/credential-provider-process@3.972.79':
+    resolution: {integrity: sha512-b9QnxJiZSccqpkSNNWkHRwU0XKbybD1p+j02m/qJc4mIwLkwQpJYfA/cbjg6hgGOoD7W1/imi+obSzDk/T1oNg==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/credential-provider-sso@3.973.23':
+    resolution: {integrity: sha512-KZiZ6RUQY4mahZVreo1pp5usUDOJAf613NLicgC0MQWA0rfdkRDaeT2K0WClYEHjMy9BKvXRxc087Kr1QjV9MA==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/credential-provider-web-identity@3.972.85':
+    resolution: {integrity: sha512-r9bZrCczKj0V46yRpFZavTmPlqBPtziEBZnKVHcGZ5NwpUrzHwhzizc7ntMfw5KPWHmL35C2tChwPH3MIy2TMQ==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/eventstream-handler-node@3.972.39':
+    resolution: {integrity: sha512-V+AvQ+KFWApgm9134igy78cgoCEAFfV8K3KmlVi511vjkRWAgvy0tGUePrZsER+9EvrmUWEsrA2NBQspiGVBMQ==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/middleware-eventstream@3.972.35':
+    resolution: {integrity: sha512-JAyjfoYxHCXNnCXtbTviEpb1+gxe8tsWQ3URwZIT1Bqhrm4fgDDuCA72n4HVnHMNutBhZLXnYgc97ehkhfGpMA==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/nested-clients@3.997.53':
+    resolution: {integrity: sha512-JRcs7wwU/cMw62hbLUxlh/wyrHaL/4KOnJs/Hny0ZIo4GY8biBMEfLJrYDEBMF8wDIewtDZsBWT9Rna4uaRemw==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/signature-v4-multi-region@3.996.50':
+    resolution: {integrity: sha512-Ob9GCZ3YnGPws696zTYW/rLFYHa9QLh6DgTCnkHb+0jhHNBgHWM8Ui2b+yrIjkfDsRVsglyrOey6tOOG/VWxMA==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/token-providers@3.1160.0':
+    resolution: {integrity: sha512-KHT4W6fRqXEDYM0lIPQD55bvZSk1xmzShUcEcw0dZYiUsgFVmilnfwY8K+tn2V/MG1Lv+SX7wkbzq/ld4XiygQ==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/types@3.975.0':
+    resolution: {integrity: sha512-WQlhs6juByzWOzj5fwxOx0mPJaEqMcG/sDpl3Id61B3XhKE63xY+0QWcnG+sWR/sCfprmreyUo1lM7IKZmHMzw==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/xml-builder@3.972.42':
+    resolution: {integrity: sha512-smX8/gNP8Kjq+CWTBMZQLQ912vOQjiWExzwzvMO+eujPB5RY8IbtF0AGdUUXHKN7KoDWK9dIcuW0WG269kiP6w==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws/lambda-invoke-store@0.3.0':
+    resolution: {integrity: sha512-sl4Bm6yiMNYrZKkqqDFWN0UfnWhlS8ivKxrYl+6t0gCLrqr8y3B2IqZZbFRkfaVVp7C/baApyh71P+LeE1A2sQ==}
+    engines: {node: '>=18.0.0'}
 
   '@babel/code-frame@7.29.7':
     resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
@@ -2335,6 +2441,30 @@ packages:
   '@sinonjs/fake-timers@15.4.0':
     resolution: {integrity: sha512-DsG+8/LscQIQg68J6Ef3dv10u6nVyetYn923s3/sus5eaGfTo1of5WMZSLf0UJc9KDuKPilPH0UDJCjvNbDNCA==}
 
+  '@smithy/core@3.38.0':
+    resolution: {integrity: sha512-aLyyCnK2p4yvNA2TaM+5owXqb+rZGSiUKEsNP329AzeYnERtAz7NrlTbRsaxqmZ0ooxwoID8LMm959UGQQDIsg==}
+    engines: {node: '>=18.0.0'}
+
+  '@smithy/credential-provider-imds@4.5.2':
+    resolution: {integrity: sha512-A9uSdn72ozbRUSit0eib0TW7nXuNPlaeM0zcGkJ+nE6tFcSDbnmtwoxbTCFBukVQcszDAyvsd7+rTduPTXpygg==}
+    engines: {node: '>=18.0.0'}
+
+  '@smithy/fetch-http-handler@5.8.0':
+    resolution: {integrity: sha512-ycSJu3tFAQ4v04CBB0agqFMVsSQ1iG3yw+SpgxRqKfaURpQD4CZ8Wn0zPMmSnOuTpTh65Vz+EA0rMrw089wvkA==}
+    engines: {node: '>=18.0.0'}
+
+  '@smithy/node-http-handler@4.14.0':
+    resolution: {integrity: sha512-j24RS5V9J52u0z81RpgF7H55p4bS6UCEIxF4ZYzTYh6M9hzXvjAIAYwgLobqf7vJq3xib5VXc7nX3YesV8Rx4A==}
+    engines: {node: '>=18.0.0'}
+
+  '@smithy/signature-v4@5.7.5':
+    resolution: {integrity: sha512-WPjdr5oWOk1LArpI4pavu+fSo+/evi0Re1olxGvqwuZopd4gYR1UGCi+Soyn/IjmafqbWs+ZC+3AKxJS3ZpwUg==}
+    engines: {node: '>=18.0.0'}
+
+  '@smithy/types@4.19.0':
+    resolution: {integrity: sha512-r7jh49VJxGerfAcTQA6gXcKc+98zOp/tqRwzYjgOE+iSQsP6cEU1hq2QzbuipmP68QtYdY9wKEhiCQZIzHgZ4Q==}
+    engines: {node: '>=18.0.0'}
+
   '@socket.io/component-emitter@3.1.2':
     resolution: {integrity: sha512-9BCxFwvbGg/RsZK9tjXd8s4UcwR0MWeFQ1XEKIQVVvAGJyINdrqKMcTRyLoK8Rse1GjzLV9cwjWV1olXRWEXVA==}
 
@@ -2869,6 +2999,9 @@ packages:
   big-integer@1.6.52:
     resolution: {integrity: sha512-QxD8cf2eVqJOOz63z6JIN9BzvVs/dlySa5HGSBH5xtR8dPteIRQnBxxKqkNTiT6jbDTF6jAfrd4oMcND9RGbQg==}
     engines: {node: '>=0.6'}
+
+  bowser@2.15.0:
+    resolution: {integrity: sha512-xic6KSZglg/I4ymp45fdM4GWfYpBK79Fxd/TOvJktlaPgQqqDxvmGwOPZl2V0dyeS3Lj5c180bLhXF43iyAjZQ==}
 
   bplist-creator@0.1.0:
     resolution: {integrity: sha512-sXaHZicyEEmY86WyueLTQesbeoH/mquvarJaQNbjuOQO+7gbFcDEWqKmcWA4cOTLzFlfgvkiVxolk1k5bBIpmg==}
@@ -3421,11 +3554,24 @@ packages:
       react: '*'
       react-native: '*'
 
+  expo-audio@58.0.10:
+    resolution: {integrity: sha512-GoOyd1JAb7l/bJ/UNc5QIrXqSK9QrEFF3ahjdONGt8V6PN3RXRsTcOJDMN6RmDc9kb0XPP34DJIxEd/ushH1RQ==}
+    peerDependencies:
+      expo: '*'
+      expo-asset: '*'
+      react: '*'
+      react-native: '*'
+
   expo-constants@58.0.14:
     resolution: {integrity: sha512-ogn/7xLmvkEVYX6SimDkcNDn/d8qZpCTQdBWPnMI+Ry7Sfch0Dz2GIcweqddK4hrkvrSY01TS20BZfMlCpJ75g==}
     peerDependencies:
       expo: '*'
       react-native: '*'
+
+  expo-crypto@58.0.7:
+    resolution: {integrity: sha512-g+4i4UpqQ5jNy1VPRvVVvr9aIdh8WwvxbpwL2ntiSESDRsXyVSeb8JM6tHVdC3b9J2nGxjtrhrsaWOo0jbSxlA==}
+    peerDependencies:
+      expo: '*'
 
   expo-doctor@1.21.5:
     resolution: {integrity: sha512-VH/G2zHnc0kNrvfx/kYOD1QaCr2DC3cLaAPw7MzySypPhAb6nsIKJurNDyasbhU3KknK931Kedc2zRLkfdMisA==}
@@ -5670,6 +5816,167 @@ snapshots:
       '@csstools/css-tokenizer': 3.0.4
       lru-cache: 10.4.3
 
+  '@aws-sdk/client-polly@3.1159.0':
+    dependencies:
+      '@aws-sdk/core': 3.979.0
+      '@aws-sdk/credential-provider-node': 3.972.91
+      '@aws-sdk/eventstream-handler-node': 3.972.39
+      '@aws-sdk/middleware-eventstream': 3.972.35
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.0
+      '@smithy/fetch-http-handler': 5.8.0
+      '@smithy/node-http-handler': 4.14.0
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/core@3.979.0':
+    dependencies:
+      '@aws-sdk/types': 3.975.0
+      '@aws-sdk/xml-builder': 3.972.42
+      '@aws/lambda-invoke-store': 0.3.0
+      '@smithy/core': 3.38.0
+      '@smithy/signature-v4': 5.7.5
+      '@smithy/types': 4.19.0
+      bowser: 2.15.0
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-env@3.972.79':
+    dependencies:
+      '@aws-sdk/core': 3.979.0
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.0
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-http@3.972.81':
+    dependencies:
+      '@aws-sdk/core': 3.979.0
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.0
+      '@smithy/fetch-http-handler': 5.8.0
+      '@smithy/node-http-handler': 4.14.0
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-ini@3.973.24':
+    dependencies:
+      '@aws-sdk/core': 3.979.0
+      '@aws-sdk/credential-provider-env': 3.972.79
+      '@aws-sdk/credential-provider-http': 3.972.81
+      '@aws-sdk/credential-provider-login': 3.972.86
+      '@aws-sdk/credential-provider-process': 3.972.79
+      '@aws-sdk/credential-provider-sso': 3.973.23
+      '@aws-sdk/credential-provider-web-identity': 3.972.85
+      '@aws-sdk/nested-clients': 3.997.53
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.0
+      '@smithy/credential-provider-imds': 4.5.2
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-login@3.972.86':
+    dependencies:
+      '@aws-sdk/core': 3.979.0
+      '@aws-sdk/nested-clients': 3.997.53
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.0
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-node@3.972.91':
+    dependencies:
+      '@aws-sdk/credential-provider-env': 3.972.79
+      '@aws-sdk/credential-provider-http': 3.972.81
+      '@aws-sdk/credential-provider-ini': 3.973.24
+      '@aws-sdk/credential-provider-process': 3.972.79
+      '@aws-sdk/credential-provider-sso': 3.973.23
+      '@aws-sdk/credential-provider-web-identity': 3.972.85
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.0
+      '@smithy/credential-provider-imds': 4.5.2
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-process@3.972.79':
+    dependencies:
+      '@aws-sdk/core': 3.979.0
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.0
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-sso@3.973.23':
+    dependencies:
+      '@aws-sdk/core': 3.979.0
+      '@aws-sdk/nested-clients': 3.997.53
+      '@aws-sdk/token-providers': 3.1160.0
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.0
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-web-identity@3.972.85':
+    dependencies:
+      '@aws-sdk/core': 3.979.0
+      '@aws-sdk/nested-clients': 3.997.53
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.0
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/eventstream-handler-node@3.972.39':
+    dependencies:
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.0
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/middleware-eventstream@3.972.35':
+    dependencies:
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.0
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/nested-clients@3.997.53':
+    dependencies:
+      '@aws-sdk/core': 3.979.0
+      '@aws-sdk/signature-v4-multi-region': 3.996.50
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.0
+      '@smithy/fetch-http-handler': 5.8.0
+      '@smithy/node-http-handler': 4.14.0
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/signature-v4-multi-region@3.996.50':
+    dependencies:
+      '@aws-sdk/types': 3.975.0
+      '@smithy/signature-v4': 5.7.5
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/token-providers@3.1160.0':
+    dependencies:
+      '@aws-sdk/core': 3.979.0
+      '@aws-sdk/nested-clients': 3.997.53
+      '@aws-sdk/types': 3.975.0
+      '@smithy/core': 3.38.0
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/types@3.975.0':
+    dependencies:
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws-sdk/xml-builder@3.972.42':
+    dependencies:
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@aws/lambda-invoke-store@0.3.0': {}
+
   '@babel/code-frame@7.29.7':
     dependencies:
       '@babel/helper-validator-identifier': 7.29.7
@@ -7757,6 +8064,39 @@ snapshots:
     dependencies:
       '@sinonjs/commons': 3.0.1
 
+  '@smithy/core@3.38.0':
+    dependencies:
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@smithy/credential-provider-imds@4.5.2':
+    dependencies:
+      '@smithy/core': 3.38.0
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@smithy/fetch-http-handler@5.8.0':
+    dependencies:
+      '@smithy/core': 3.38.0
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@smithy/node-http-handler@4.14.0':
+    dependencies:
+      '@smithy/core': 3.38.0
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@smithy/signature-v4@5.7.5':
+    dependencies:
+      '@smithy/core': 3.38.0
+      '@smithy/types': 4.19.0
+      tslib: 2.8.1
+
+  '@smithy/types@4.19.0':
+    dependencies:
+      tslib: 2.8.1
+
   '@socket.io/component-emitter@3.1.2': {}
 
   '@tanstack/query-core@5.104.5': {}
@@ -8348,6 +8688,8 @@ snapshots:
 
   big-integer@1.6.52: {}
 
+  bowser@2.15.0: {}
+
   bplist-creator@0.1.0:
     dependencies:
       stream-buffers: 2.2.0
@@ -8877,6 +9219,13 @@ snapshots:
       - supports-color
       - typescript
 
+  expo-audio@58.0.10(expo-asset@58.0.19(expo@58.0.21)(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)(supports-color@8.1.1)(typescript@6.0.3))(expo@58.0.21)(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0):
+    dependencies:
+      expo: 58.0.21(@babel/core@7.29.7(supports-color@8.1.1))(@expo/metro-runtime@58.0.15)(expo-router@58.0.28)(react-dom@19.3.0(react@19.3.0))(react-native-web@0.21.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-native-worklets@0.13.0(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)(supports-color@8.1.1))(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)(supports-color@8.1.1)(typescript@6.0.3)
+      expo-asset: 58.0.19(expo@58.0.21)(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)(supports-color@8.1.1)(typescript@6.0.3)
+      react: 19.3.0
+      react-native: 0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1)
+
   expo-constants@58.0.14(expo@58.0.21)(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3):
     dependencies:
       '@expo/env': 2.5.3(supports-color@8.1.1)
@@ -8886,6 +9235,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
       - typescript
+
+  expo-crypto@58.0.7(expo@58.0.21):
+    dependencies:
+      expo: 58.0.21(@babel/core@7.29.7(supports-color@8.1.1))(@expo/metro-runtime@58.0.15)(expo-router@58.0.28)(react-dom@19.3.0(react@19.3.0))(react-native-web@0.21.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-native-worklets@0.13.0(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)(supports-color@8.1.1))(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)(supports-color@8.1.1)(typescript@6.0.3)
 
   expo-doctor@1.21.5: {}
 
@@ -11155,8 +11508,7 @@ snapshots:
     dependencies:
       typescript: 6.0.3
 
-  tslib@2.8.1:
-    optional: true
+  tslib@2.8.1: {}
 
   tsx@4.23.15:
     dependencies:

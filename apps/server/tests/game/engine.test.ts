@@ -11,8 +11,10 @@ import type { MatchState, TransitionResult } from '../../src/game/types.js';
 import {
   createFixtureMatch,
   createRoundDescriptor,
+  completeInitialPlayback,
   fixtureId,
-  prepareReadyRound,
+  preparePlayableRound as prepareReadyRound,
+  prepareReadyRound as prepareCountdownRound,
   receiptAt,
   submit,
   tickAt,
@@ -95,7 +97,7 @@ describe('deterministic authoritative core', () => {
   it.each([1, 2, 3, 4, 5])(
     'uses fixed Classic level %i and its typing duration',
     (level) => {
-      const ready = prepareReadyRound(
+      const ready = prepareCountdownRound(
         createFixtureMatch({
           setup: {
             mode: 'classic',
@@ -105,7 +107,7 @@ describe('deterministic authoritative core', () => {
         }),
       );
       expect(ready.monoSchedule.playbackAt).toBe(4_000);
-      expect(ready.monoSchedule.typingStartAt).toBe(4_600);
+      expect(ready.monoSchedule.typingStartAt).toBe(5_500);
       expect(
         ready.monoSchedule.deadlineAt - ready.monoSchedule.typingStartAt,
       ).toBe([8_000, 8_000, 10_000, 12_000, 15_000][level - 1]);
@@ -113,14 +115,15 @@ describe('deterministic authoritative core', () => {
       expect(getNextWakeAt(state)).toBe(4_000);
       state = verify(tickAt(state, 4_000));
       expect(state.phase).toBe('PLAYING_WORD');
-      expect(getNextWakeAt(state)).toBe(4_600);
-      state = verify(tickAt(state, 4_600));
+      state = completeInitialPlayback(state);
+      expect(getNextWakeAt(state)).toBe(5_500);
+      state = verify(tickAt(state, 5_500));
       expect(state.phase).toBe('ACTIVE_TYPING');
       state = verify(
         submit(state, state.participants[0].playerId, {
           attemptId: fixtureId(900),
           text: ready.descriptor.canonicalText,
-          atMonoMs: 4_600,
+          atMonoMs: 5_500,
         }),
       );
       expect(state.currentLevel).toBe(level);
@@ -166,6 +169,177 @@ describe('deterministic authoritative core', () => {
     const duplicate = ready(descriptor.audio.audioVersion);
     expect(duplicate.batches).toEqual([]);
     expect(duplicate.state.round?.monoSchedule).toEqual(schedule);
+  });
+
+  it('expires preparation exactly 20 seconds after preparation without rescheduling', () => {
+    let state = createFixtureMatch();
+    const descriptor = createRoundDescriptor(state);
+    state = verify(
+      applyCommand(
+        state,
+        { type: 'round.prepare', descriptor },
+        receiptAt(state, 1_000),
+      ),
+    );
+    expect(state.round?.preflightDeadlineMonoMs).toBe(21_000);
+    state = verify(
+      applyCommand(
+        state,
+        {
+          type: 'round.audio_ready',
+          playerId: state.participants[0].playerId,
+          payload: {
+            matchId: state.matchId,
+            roundId: descriptor.roundId,
+            audioVersion: descriptor.audio.audioVersion,
+          },
+        },
+        receiptAt(state, 20_999),
+      ),
+    );
+    expect(state.round?.preflightDeadlineMonoMs).toBe(21_000);
+    const expired = tickAt(state, 21_000);
+    verify(expired);
+    expect(expired.state.phase).toBe('ABORTED');
+    expect(expired.state.interruption?.reason).toBe('AUDIO_UNAVAILABLE');
+    expect(expired.state.participants.map((p) => p.score)).toEqual([0, 0]);
+  });
+
+  it('accepts both completions only in the fixed end-to-typing window', () => {
+    const ready = prepareCountdownRound(createFixtureMatch());
+    const round = ready.state.round!;
+    const payload = {
+      matchId: ready.state.matchId,
+      roundId: round.roundId,
+      audioVersion: round.audio.audioVersion,
+    };
+    let state = ready.state;
+    const firstEnd = ready.monoSchedule.playbackAt + round.audio.clipDurationMs;
+    const early = applyCommand(
+      state,
+      {
+        type: 'round.audio_completed',
+        playerId: state.participants[0].playerId,
+        payload,
+      },
+      receiptAt(state, firstEnd - 1),
+    );
+    expect(early.error?.code).toBe('INVALID_TIME');
+    state = early.state;
+    for (const [index, at] of [
+      firstEnd,
+      ready.monoSchedule.typingStartAt - 1,
+    ].entries()) {
+      const completed = applyCommand(
+        state,
+        {
+          type: 'round.audio_completed',
+          playerId: state.participants[index]!.playerId,
+          payload,
+        },
+        receiptAt(state, at),
+      );
+      expect(completed.error).toBeNull();
+      state = verify(completed);
+    }
+    state = verify(tickAt(state, ready.monoSchedule.typingStartAt));
+    expect(state.phase).toBe('ACTIVE_TYPING');
+    expect(state.participants.every((p) => p.initialPlaybackCompleted)).toBe(
+      true,
+    );
+  });
+
+  it('interrupts without a winner when completion proof is missing or cleared', () => {
+    const cases = ['missing', 'disconnect'] as const;
+    for (const mode of cases) {
+      const ready = prepareCountdownRound(createFixtureMatch());
+      const round = ready.state.round!;
+      const payload = {
+        matchId: ready.state.matchId,
+        roundId: round.roundId,
+        audioVersion: round.audio.audioVersion,
+      };
+      let state = tickAt(ready.state, ready.monoSchedule.playbackAt).state;
+      state = verify(
+        applyCommand(
+          state,
+          {
+            type: 'round.audio_completed',
+            playerId: state.participants[0].playerId,
+            payload,
+          },
+          receiptAt(
+            state,
+            ready.monoSchedule.playbackAt + round.audio.clipDurationMs,
+          ),
+        ),
+      );
+      if (mode === 'disconnect') {
+        state = verify(
+          applyCommand(
+            state,
+            {
+              type: 'round.audio_completed',
+              playerId: state.participants[1].playerId,
+              payload,
+            },
+            receiptAt(state, ready.monoSchedule.typingStartAt - 3),
+          ),
+        );
+        const playerId = state.participants[0].playerId;
+        state = verify(
+          applyCommand(
+            state,
+            { type: 'player.disconnect', playerId },
+            receiptAt(state, ready.monoSchedule.typingStartAt - 2),
+          ),
+        );
+        state = verify(
+          applyCommand(
+            state,
+            { type: 'player.reconnect', playerId },
+            receiptAt(state, ready.monoSchedule.typingStartAt - 1),
+          ),
+        );
+      }
+      const gated = tickAt(state, ready.monoSchedule.typingStartAt);
+      verify(gated);
+      expect(gated.state.phase).toBe('ABORTED');
+      expect(gated.state.interruption?.reason).toBe('AUDIO_UNAVAILABLE');
+      expect(gated.state.completion).toBeNull();
+    }
+  });
+
+  it('accepts only allowlisted audio failures and fails the shared round closed', () => {
+    const ready = prepareCountdownRound(createFixtureMatch());
+    const round = ready.state.round!;
+    const base = {
+      matchId: ready.state.matchId,
+      roundId: round.roundId,
+      audioVersion: round.audio.audioVersion,
+    };
+    const invalid = applyCommand(
+      ready.state,
+      {
+        type: 'round.audio_failed',
+        playerId: ready.state.participants[0].playerId,
+        payload: { ...base, reason: 'PRIVATE_REASON' },
+      },
+      receiptAt(ready.state, ready.state.lastInput.atMonoMs),
+    );
+    expect(invalid.error?.code).toBe('INVALID_COMMAND');
+    const failed = applyCommand(
+      invalid.state,
+      {
+        type: 'round.audio_failed',
+        playerId: invalid.state.participants[0].playerId,
+        payload: { ...base, reason: 'PLAYBACK_FAILED' },
+      },
+      receiptAt(invalid.state, invalid.state.lastInput.atMonoMs),
+    );
+    verify(failed);
+    expect(failed.state.phase).toBe('ABORTED');
+    expect(failed.state.interruption?.reason).toBe('AUDIO_UNAVAILABLE');
   });
 
   it('checks category, level, word and round reuse without modifying setup', () => {
@@ -471,7 +645,7 @@ describe('deterministic authoritative core', () => {
   });
 
   it('replay sequences are idempotent telemetry with no rule/timer effects', () => {
-    const ready = prepareReadyRound(createFixtureMatch());
+    const ready = prepareCountdownRound(createFixtureMatch());
     let state = ready.state;
     const replay = (replaySequence: number, at: number) =>
       applyCommand(
@@ -487,9 +661,10 @@ describe('deterministic authoritative core', () => {
         },
         receiptAt(state, at),
       );
-    expect(replay(1, ready.monoSchedule.playbackAt).error?.code).toBe(
-      'NOT_TYPING',
-    );
+    const early = replay(1, ready.monoSchedule.playbackAt);
+    expect(early.error?.code).toBe('NOT_TYPING');
+    state = early.state;
+    state = completeInitialPlayback(state);
     state = verify(replay(2, ready.monoSchedule.typingStartAt));
     expect(replay(2, ready.monoSchedule.typingStartAt).batches).toEqual([]);
     state = verify(replay(1, ready.monoSchedule.typingStartAt));
@@ -647,7 +822,7 @@ describe('deterministic authoritative core', () => {
     let state = createFixtureMatch({
       clockAnchor: {
         monoMs: 1_000,
-        utcEpochMs: Number.MAX_SAFE_INTEGER - 5_000,
+        utcEpochMs: Number.MAX_SAFE_INTEGER - 25_000,
       },
     });
     const descriptor = createRoundDescriptor(state);
@@ -681,7 +856,7 @@ describe('deterministic authoritative core', () => {
         playerId: state.participants[1].playerId,
         payload,
       },
-      receiptAt(state, 1_000),
+      receiptAt(state, 20_000),
     );
     expect(failed.error?.code).toBe('TIME_OVERFLOW');
     expect(failed.state.round?.monoSchedule).toBeNull();
@@ -690,7 +865,7 @@ describe('deterministic authoritative core', () => {
     const disconnect = applyCommand(
       state,
       { type: 'player.disconnect', playerId: state.participants[0].playerId },
-      receiptAt(state, 1_000),
+      receiptAt(state, 17_000),
     );
     expect(disconnect.error?.code).toBe('TIME_OVERFLOW');
     expect(disconnect.state.participants[0].connected).toBe(true);
@@ -698,8 +873,8 @@ describe('deterministic authoritative core', () => {
 
   it('maps near-maximum anchors using elapsed differences without overflowing intermediates', () => {
     const monoMs = Number.MAX_SAFE_INTEGER - 20_001;
-    const utcEpochMs = Number.MAX_SAFE_INTEGER - 11_600;
-    const ready = prepareReadyRound(
+    const utcEpochMs = Number.MAX_SAFE_INTEGER - 20_000;
+    const ready = prepareCountdownRound(
       createFixtureMatch({
         clockAnchor: { monoMs, utcEpochMs },
       }),
@@ -712,7 +887,7 @@ describe('deterministic authoritative core', () => {
     if (!projected.ok || projected.snapshot.phase !== 'COUNTDOWN')
       throw new Error('Expected countdown');
     expect(projected.snapshot.round.schedule.deadlineAt).toBe(
-      Number.MAX_SAFE_INTEGER,
+      Number.MAX_SAFE_INTEGER - 7_500,
     );
     const disconnected = applyCommand(
       ready.state,

@@ -1,0 +1,22 @@
+{
+  "name": "@typeduel/word-audio",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "dry-run": "node dist/generate-eight.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-polly": "3.1159.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@typeduel/config": "workspace:*",
+    "@types/node": "24.10.0",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  }
+}

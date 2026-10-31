@@ -118,6 +118,9 @@ test('same-version result after snapshot still produces one presentation effect'
   ]);
   consumer.acceptUpdate(packet, 1);
   expect(consumer.takeEffects()).toEqual([]);
+  expect(consumer.receivedResults.map((result) => result.roundId)).toEqual([
+    snapshot.result.roundId,
+  ]);
 });
 test('final result and completion stay together and are independently deduplicated', () => {
   const base = initial(20);
@@ -169,6 +172,7 @@ test('final result and completion stay together and are independently deduplicat
   ]);
   consumer.acceptUpdate(packet, 1);
   expect(consumer.takeEffects()).toEqual([]);
+  expect(consumer.receivedResults).toHaveLength(1);
 });
 test('superseded effects and old-round playback are discarded', () => {
   const countdown: MatchSnapshot = { ...initial(4), phase: 'COUNTDOWN', round };
@@ -227,6 +231,37 @@ test('reconnection waits for canonical sync and ignores pre-sync packets', () =>
   expect(consumer.acceptUpdate(update(initial(30)), 2)).toBe('ignored');
   expect(consumer.acceptSession(session(initial(8)), 2, true)).toBe('applied');
   expect(consumer.ready).toBe(true);
+});
+test('ordinary reconnect retains the committed result ledger for the same match', () => {
+  const base = initial(10);
+  const result = {
+    roundId: round.roundId,
+    roundNumber: 1,
+    level: 1 as const,
+    nextLevel: 1 as const,
+    correctWord: 'example',
+    winnerId: null,
+    scores: [
+      { playerId: id(10), score: 0 },
+      { playerId: id(11), score: 0 },
+    ] as [
+      { playerId: string; score: number },
+      { playerId: string; score: number },
+    ],
+  };
+  const closed: MatchSnapshot = { ...base, phase: 'ROUND_RESULT', result };
+  delete (closed as unknown as Record<string, unknown>).round;
+  consumer.acceptUpdate(
+    update(closed, [
+      { type: 'round.result', matchId: closed.matchId, payload: result },
+    ]),
+    1,
+  );
+  consumer.beginGeneration(2);
+  const reconnected = session(closed);
+  reconnected.sessionId = id(99);
+  consumer.acceptSession(reconnected, 2, true);
+  expect(consumer.receivedResults).toEqual([result]);
 });
 test('missed intermediate result is not replayed after advancement; latest interruption stays authoritative', () => {
   const nextRound = { ...round, roundId: id(80), roundNumber: 2 };

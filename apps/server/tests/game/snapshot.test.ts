@@ -10,7 +10,9 @@ import type { MatchState, TransitionResult } from '../../src/game/types.js';
 import {
   createFixtureMatch,
   createRoundDescriptor,
+  completeInitialPlayback,
   fixtureId,
+  preparePlayableRound,
   prepareReadyRound,
   receiptAt,
   submit,
@@ -66,7 +68,8 @@ describe('independent snapshot and temporal privacy review', () => {
     const playing = tickAt(prepared.state, prepared.monoSchedule.playbackAt);
     expect(playing.state.phase).toBe('PLAYING_WORD');
     checkTransition(playing, hidden);
-    const active = tickAt(playing.state, prepared.monoSchedule.typingStartAt);
+    const completed = completeInitialPlayback(playing.state);
+    const active = tickAt(completed, prepared.monoSchedule.typingStartAt);
     checkTransition(active, hidden);
     const wrong = submit(active.state, players[0], {
       attemptId: fixtureId(91_000),
@@ -138,7 +141,7 @@ describe('independent snapshot and temporal privacy review', () => {
   });
 
   it('keeps public state identical while counters and historical outcomes belong only to the viewer', () => {
-    const prepared = prepareReadyRound(makeMatch());
+    const prepared = preparePlayableRound(makeMatch());
     let state = tickAt(
       prepared.state,
       prepared.monoSchedule.typingStartAt,
@@ -208,7 +211,7 @@ describe('independent snapshot and temporal privacy review', () => {
   });
 
   it('returns detached nested snapshots, event payloads and acknowledgements', () => {
-    const prepared = prepareReadyRound(makeMatch());
+    const prepared = preparePlayableRound(makeMatch());
     const active = tickAt(prepared.state, prepared.monoSchedule.typingStartAt);
     const wrong = submit(active.state, players[0], {
       attemptId: fixtureId(93_001),
@@ -268,7 +271,7 @@ describe('independent snapshot and temporal privacy review', () => {
     expect(invalid.error?.code).toBe('INVALID_DESCRIPTOR');
     checkTransition(invalid, [canonical, variant, privateWordId]);
     expect(invalid.state.round).toBeNull();
-    const prepared = prepareReadyRound(invalid.state, {
+    const prepared = preparePlayableRound(invalid.state, {
       descriptor: { ...descriptor, level: 1 },
     });
     const malformed = applyCommand(
@@ -300,8 +303,20 @@ describe('independent snapshot and temporal privacy review', () => {
   });
 
   it('does not reveal an unclosed answer on exact grace expiry or a terminal answer retry', () => {
-    const state = makeMatch();
-    const prepared = prepareReadyRound(state, {
+    const state = createFixtureMatch({
+      matchId: fixtureId(900),
+      participants: [...players],
+      config: {
+        typingDurationMsByLevel: {
+          1: 10_000,
+          2: 8_000,
+          3: 8_000,
+          4: 8_000,
+          5: 8_000,
+        },
+      },
+    });
+    const prepared = preparePlayableRound(state, {
       descriptor: createRoundDescriptor(state, {
         canonicalText: canonical,
         acceptedVariants: [variant],
@@ -341,7 +356,7 @@ describe('independent snapshot and temporal privacy review', () => {
       participants: [...players],
       setup: { mode: 'challenge', categorySlug: 'animals' },
     });
-    const prepared = prepareReadyRound(state);
+    const prepared = preparePlayableRound(state);
     const correct = submit(prepared.state, players[0], {
       attemptId: fixtureId(96_001),
       text: prepared.descriptor.canonicalText,

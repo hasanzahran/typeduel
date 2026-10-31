@@ -22,6 +22,87 @@ afterEach(async () => {
 });
 
 describe('socket ingress order rather than asynchronous processing time', () => {
+  it('retains timely queued completion receipts across a slow COMMIT before typing opens', async () => {
+    h = await createHarness();
+    const a = await h.connect();
+    const b = await h.connect();
+    const matchId = await startMatch(h, a, b);
+    await eventually(
+      async () => !!(await h!.store.readCommitted(matchId))?.state.round,
+      'prepared round',
+    );
+    const round = (await h.store.readCommitted(matchId))!.state.round!;
+    const readyPayload = {
+      matchId,
+      roundId: round.roundId,
+      audioVersion: round.audio.audioVersion,
+    };
+    success(
+      await a.request<GameplayReplyData>('round.audio_ready', readyPayload),
+    );
+    success(
+      await b.request<GameplayReplyData>('round.audio_ready', readyPayload),
+    );
+    const schedule = (await h.store.readCommitted(matchId))!.state.round!
+      .monoSchedule!;
+    await h.advance(schedule.playbackAt);
+
+    const gate = barrier(h.testDb);
+    let hold = true;
+    h.setFault(async (point) => {
+      if (point === 'before_commit' && hold) {
+        hold = false;
+        await gate.pause();
+      }
+    });
+    h.clock.set(schedule.playbackAt + round.audio.clipDurationMs);
+    const first = settle(
+      a.request<GameplayReplyData>('round.audio_completed', readyPayload),
+    );
+    await gate.reached;
+    const secondAdmission = deferred<number>();
+    // This hook runs after registry.command synchronously captures the FIFO receipt.
+    h.setAdmissionObserver((event) => {
+      if (
+        event.event === 'round.audio_completed' &&
+        event.playerId === b.playerId &&
+        event.matchId === matchId
+      )
+        secondAdmission.resolve(h!.clock.monoNow());
+    });
+    const second = settle(
+      b.request<GameplayReplyData>('round.audio_completed', readyPayload),
+    );
+    const secondReceivedAt = await secondAdmission.promise;
+    expect(secondReceivedAt).toBeLessThan(schedule.typingStartAt);
+    h.clock.set(schedule.typingStartAt, true);
+    expect(
+      (await h.store.readCommitted(matchId))!.state.participants.map(
+        (player) => player.initialPlaybackCompleted,
+      ),
+    ).toEqual([false, false]);
+
+    gate.release();
+    const [firstResult, secondResult] = await Promise.all([first, second]);
+    if (!firstResult.ok || !secondResult.ok)
+      throw new Error('Completion receipt unexpectedly failed');
+    expect(success(firstResult.value)).toEqual({
+      ack: null,
+      error: null,
+    });
+    expect(success(secondResult.value)).toEqual({
+      ack: null,
+      error: null,
+    });
+    await h.runtime.reconcile();
+    await eventually(
+      async () =>
+        (await h!.store.readCommitted(matchId))?.state.phase ===
+        'ACTIVE_TYPING',
+      'typing after committed completion receipts',
+    );
+  });
+
   it('drains replaced due timers once at the same tick while retaining nofire and a dispatch bound', () => {
     const clock = new ManualClock(0);
     let calls = 0;

@@ -52,6 +52,7 @@ export interface MonoSchedule {
 export interface PrivateRound extends RoundDescriptor {
   roundNumber: number;
   monoSchedule: MonoSchedule | null;
+  preflightDeadlineMonoMs: number | null;
 }
 export interface PrivateParticipant {
   playerId: string;
@@ -59,6 +60,7 @@ export interface PrivateParticipant {
   connected: boolean;
   graceDeadlineMonoMs: number | null;
   ready: boolean;
+  initialPlaybackCompleted: boolean;
   attemptsUsed: number;
   replaySequences: (1 | 2)[];
 }
@@ -69,6 +71,10 @@ export interface CountedAttempt {
 }
 // Private candidate state. Reducers clone it before editing; it is never a wire packet.
 export interface MatchState {
+  /** Read adapter marker: old live clocks may only be restart-interrupted. */
+  legacyCheckpoint?: true;
+  /** Historical terminal v1 outcome; no initial-playback proof is fabricated. */
+  legacyTerminal?: true | undefined;
   matchId: string;
   setup: MatchSetup;
   clockAnchor: ClockAnchor;
@@ -92,6 +98,8 @@ export type GameCommand =
   | { type: 'source.unavailable' }
   | { type: 'answer.submit'; playerId: string; payload: unknown }
   | { type: 'round.audio_ready'; playerId: string; payload: unknown }
+  | { type: 'round.audio_completed'; playerId: string; payload: unknown }
+  | { type: 'round.audio_failed'; playerId: string; payload: unknown }
   | { type: 'round.replay_used'; playerId: string; payload: unknown }
   | { type: 'player.disconnect'; playerId: string }
   | { type: 'player.reconnect'; playerId: string };

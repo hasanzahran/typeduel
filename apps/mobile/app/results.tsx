@@ -1,4 +1,9 @@
+import { useLocalSearchParams } from 'expo-router';
 import { ReleaseScreen } from '../src/components/ui';
-// Metro removes this branch and the entire preview module from release bundles.
-const Screen = __DEV__ ? require('../src/dev/preview').Results : ReleaseScreen;
-export default Screen;
+import { ResultsScreen } from '../src/features/match/ResultsScreen';
+
+const Preview = __DEV__ ? require('../src/dev/preview').Results : ReleaseScreen;
+export default function ResultsRoute() {
+  const params = useLocalSearchParams();
+  return params.live === '1' ? <ResultsScreen /> : <Preview />;
+}

@@ -8,10 +8,11 @@ import type {
 } from './types.js';
 
 export const INITIAL_COUNTDOWN_MS = 3_000;
+export const PREFLIGHT_TIMEOUT_MS = 20_000;
 export const RECONNECT_GRACE_MS = 10_000;
 export const DEFAULT_RULES: RuleConfig = {
   laterCountdownMs: 1_500,
-  playbackMarginMs: 100,
+  playbackMarginMs: 1_000,
   typingDurationMsByLevel: {
     1: 8_000,
     2: 8_000,

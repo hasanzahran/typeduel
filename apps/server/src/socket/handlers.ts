@@ -28,7 +28,13 @@ export function parse<T extends z.ZodType>(
 /** Only validated control IDs are echoed, including admission rejections. */
 export function controlRequestId(event: string, raw: unknown): string | null {
   if (
-    ['answer.submit', 'round.audio_ready', 'round.replay_used'].includes(event)
+    [
+      'answer.submit',
+      'round.audio_ready',
+      'round.audio_completed',
+      'round.audio_failed',
+      'round.replay_used',
+    ].includes(event)
   )
     return null;
   try {
@@ -62,6 +68,8 @@ export function createHandlers(options: {
       if (
         event === 'answer.submit' ||
         event === 'round.audio_ready' ||
+        event === 'round.audio_completed' ||
+        event === 'round.audio_failed' ||
         event === 'round.replay_used'
       ) {
         const payload = parse(GameplayRequestSchemas[event], raw);

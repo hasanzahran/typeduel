@@ -4,6 +4,7 @@ import {
   type AnswerAck,
   type AnswerSubmit,
   type AudioReady,
+  type AudioFailed,
   type GameplayReplyData,
   type MatchSnapshot,
 } from '@typeduel/contracts';
@@ -168,6 +169,19 @@ export class MatchCommands {
   get replaysRemaining(): number {
     this.reconcile();
     return Math.max(0, 2 - this.spentReplays);
+  }
+  reserveReplay(): 1 | 2 {
+    const snapshot = this.current();
+    if (snapshot.phase !== 'ACTIVE_TYPING' || this.spentReplays >= 2)
+      throw new ClientFailure('INVALID_REQUEST');
+    this.spentReplays++;
+    return this.spentReplays as 1 | 2;
+  }
+  reportAudioCompleted(payload: AudioReady): Promise<GameplayReplyData> {
+    return this.connection.request('round.audio_completed', payload);
+  }
+  reportAudioFailed(payload: AudioFailed): Promise<GameplayReplyData> {
+    return this.connection.request('round.audio_failed', payload);
   }
   reportReplay(sequence: 1 | 2): Promise<GameplayReplyData> {
     const snapshot = this.current();

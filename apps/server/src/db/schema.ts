@@ -95,7 +95,7 @@ export const matches = pgTable(
     ),
     check(
       'match_terminal',
-      sql`((${t.status} = 'ABORTED' and ${t.winnerId} is null and not ${t.isDraw} and ${t.interruptionReason} in ('DISCONNECT_TIMEOUT','SOURCE_UNAVAILABLE','SERVER_RESTART')) or (${t.status} = 'COMPLETED' and ${t.interruptionReason} is null and ${t.roundNumber} between 5 and 8 and ((${t.isDraw} and ${t.winnerId} is null and ${t.roundNumber} = 8 and ${t.player1Score} = ${t.player2Score}) or (not ${t.isDraw} and ((${t.winnerId} = ${t.player1Id} and ${t.player1Score} > ${t.player2Score}) or (${t.winnerId} = ${t.player2Id} and ${t.player2Score} > ${t.player1Score}))))) or (${t.status} not in ('ABORTED','COMPLETED') and ${t.winnerId} is null and not ${t.isDraw} and ${t.interruptionReason} is null)) IS TRUE`,
+      sql`((${t.status} = 'ABORTED' and ${t.winnerId} is null and not ${t.isDraw} and ${t.interruptionReason} in ('DISCONNECT_TIMEOUT','SOURCE_UNAVAILABLE','SERVER_RESTART','AUDIO_UNAVAILABLE')) or (${t.status} = 'COMPLETED' and ${t.interruptionReason} is null and ${t.roundNumber} between 5 and 8 and ((${t.isDraw} and ${t.winnerId} is null and ${t.roundNumber} = 8 and ${t.player1Score} = ${t.player2Score}) or (not ${t.isDraw} and ((${t.winnerId} = ${t.player1Id} and ${t.player1Score} > ${t.player2Score}) or (${t.winnerId} = ${t.player2Id} and ${t.player2Score} > ${t.player1Score}))))) or (${t.status} not in ('ABORTED','COMPLETED') and ${t.winnerId} is null and not ${t.isDraw} and ${t.interruptionReason} is null)) IS TRUE`,
     ),
   ],
 );

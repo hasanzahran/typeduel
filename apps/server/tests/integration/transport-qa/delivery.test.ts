@@ -208,6 +208,36 @@ describe('committed socket delivery, atomic batches and round lifecycle', () => 
     expect(saved.state.participants.map((p) => p.score)).toEqual([0, 0]);
   });
 
+  it('interrupts without a point when a participant reports audio failure', async () => {
+    h = await createHarness();
+    const a = await h.connect();
+    const b = await h.connect();
+    const matchId = await startMatch(h, a, b);
+    await eventually(
+      async () => !!(await h!.store.readCommitted(matchId))?.state.round,
+      'prepared round',
+    );
+    const round = (await h.store.readCommitted(matchId))!.state.round!;
+    const result = success(
+      await a.request<GameplayReplyData>('round.audio_failed', {
+        matchId,
+        roundId: round.roundId,
+        audioVersion: round.audio.audioVersion,
+        reason: 'DOWNLOAD_FAILED',
+      }),
+    );
+    expect(result).toEqual({ ack: null, error: null });
+    const saved = (await h.store.readCommitted(matchId))!;
+    expect(saved.state).toMatchObject({
+      phase: 'ABORTED',
+      interruption: { reason: 'AUDIO_UNAVAILABLE' },
+    });
+    expect(saved.state.participants.map((player) => player.score)).toEqual([
+      0, 0,
+    ]);
+    expect(saved.state.countedAttempts).toEqual([]);
+  });
+
   it('recovers the original room after the HTTP creation response is ignored and fences a stale mutation', async () => {
     h = await createHarness();
     const a = await h.connect();

@@ -3,13 +3,32 @@ import { decodeCheckpoint, encodeCheckpoint } from '../../src/db/checkpoint.js';
 import { validateSchemaName } from '../../src/db/client.js';
 import { StoreError } from '../../src/db/types.js';
 import { interruptForServerRestart } from '../../src/game/engine.js';
+import type { MatchState } from '../../src/game/types.js';
 import {
   createFixtureMatch,
   fixtureId,
-  prepareReadyRound,
+  preparePlayableRound as prepareReadyRound,
   submit,
   tickAt,
 } from '../game/fixtures.js';
+
+function asLegacyCheckpoint(state: MatchState): unknown {
+  const { legacyCheckpoint: _legacy, ...base } = structuredClone(state);
+  void _legacy;
+  const participants = base.participants.map(
+    ({ initialPlaybackCompleted: _completed, ...participant }) => {
+      void _completed;
+      return participant;
+    },
+  );
+  const round = base.round
+    ? (({ preflightDeadlineMonoMs: _deadline, ...value }) => {
+        void _deadline;
+        return value;
+      })(base.round)
+    : null;
+  return { formatVersion: 1, state: { ...base, participants, round } };
+}
 
 describe('private durable checkpoints', () => {
   it('round trips initial, scheduled, active and scored states with detached data', () => {
@@ -67,7 +86,7 @@ describe('private durable checkpoints', () => {
   });
   it('rejects unknown checkpoint versions and getters with sanitized errors', () => {
     expect(() =>
-      decodeCheckpoint({ formatVersion: 2, state: createFixtureMatch() }),
+      decodeCheckpoint({ formatVersion: 3, state: createFixtureMatch() }),
     ).toThrow(StoreError);
     expect(() =>
       decodeCheckpoint({
@@ -90,6 +109,36 @@ describe('private durable checkpoints', () => {
     expect(result.batches).toHaveLength(1);
     expect(encodeCheckpoint(result.state).state).toEqual(result.state);
     expect(interruptForServerRestart(result.state).batches).toEqual([]);
+  });
+  it('reads unfinished v1 only for restart interruption and writes the result as v2', () => {
+    const ready = prepareReadyRound(createFixtureMatch());
+    const active = tickAt(ready.state, ready.monoSchedule.typingStartAt).state;
+    const decoded = decodeCheckpoint(asLegacyCheckpoint(active));
+    expect(decoded.legacyCheckpoint).toBe(true);
+    expect(() => encodeCheckpoint(decoded)).toThrow(StoreError);
+    const interrupted = interruptForServerRestart(decoded);
+    expect(interrupted.state.phase).toBe('ABORTED');
+    expect(interrupted.state.interruption?.reason).toBe('SERVER_RESTART');
+    const encoded = encodeCheckpoint(interrupted.state);
+    expect(encoded.formatVersion).toBe(2);
+    expect(encoded.state.legacyCheckpoint).toBeUndefined();
+  });
+  it('reads terminal v1 without changing its outcome or counted acknowledgements', () => {
+    let state = createFixtureMatch();
+    for (let round = 0; round < 5; round += 1) {
+      const ready = prepareReadyRound(state);
+      state = submit(ready.state, state.participants[0].playerId, {
+        attemptId: fixtureId(950 + round),
+        text: ready.descriptor.canonicalText,
+        atMonoMs: ready.monoSchedule.typingStartAt,
+      }).state;
+    }
+    const decoded = decodeCheckpoint(asLegacyCheckpoint(state));
+    expect(decoded.phase).toBe('COMPLETED');
+    expect(decoded.completion).toEqual(state.completion);
+    expect(decoded.countedAttempts).toEqual(state.countedAttempts);
+    expect(decoded.legacyCheckpoint).toBeUndefined();
+    expect(encodeCheckpoint(decoded).formatVersion).toBe(2);
   });
   it('preserves an already completed result and all original counted ACKs', () => {
     let state = createFixtureMatch();

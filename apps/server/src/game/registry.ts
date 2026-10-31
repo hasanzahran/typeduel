@@ -252,8 +252,9 @@ export function createRegistry(options: {
       const entry = entries.get(matchId);
       if (!entry?.ready || !entry.actor) return true;
       return (
-        snapshot(entry.actor, playerId).phase !== 'PREPARING_ROUND' ||
-        entry.actor.canAcceptReplacement()
+        !['PREPARING_ROUND', 'COUNTDOWN', 'PLAYING_WORD'].includes(
+          snapshot(entry.actor, playerId).phase,
+        ) || entry.actor.canAcceptReplacement()
       );
     },
     replaceSession(matchId: string, playerId: string) {
@@ -261,7 +262,9 @@ export function createRegistry(options: {
       if (
         entry?.ready &&
         entry.actor &&
-        snapshot(entry.actor, playerId).phase === 'PREPARING_ROUND'
+        ['PREPARING_ROUND', 'COUNTDOWN', 'PLAYING_WORD'].includes(
+          snapshot(entry.actor, playerId).phase,
+        )
       ) {
         const pending = entry.actor.replaceConnection(playerId);
         hooks?.afterLifecycleCapture?.({
@@ -344,10 +347,41 @@ export function createRegistry(options: {
         batches: [],
       };
     },
+    authorizeAudio(
+      matchId: string,
+      playerId: string,
+      asset: { roundId: string; assetId: string; audioVersion: string },
+    ) {
+      assert();
+      const entry = entries.get(matchId);
+      if (!entry?.active || !entry.ready || !entry.actor)
+        throw new TransportFailure('UNAUTHORIZED');
+      const view = snapshot(entry.actor, playerId);
+      if (
+        ![
+          'PREPARING_ROUND',
+          'COUNTDOWN',
+          'PLAYING_WORD',
+          'ACTIVE_TYPING',
+        ].includes(view.phase) ||
+        !('round' in view) ||
+        view.round === null ||
+        view.round.roundId !== asset.roundId ||
+        view.round.audio.assetId !== asset.assetId ||
+        view.round.audio.audioVersion !== asset.audioVersion
+      )
+        throw new TransportFailure('UNAUTHORIZED');
+      return structuredClone(view.round.audio);
+    },
     command(
       matchId: string,
       playerId: string,
-      type: 'answer.submit' | 'round.audio_ready' | 'round.replay_used',
+      type:
+        | 'answer.submit'
+        | 'round.audio_ready'
+        | 'round.audio_completed'
+        | 'round.audio_failed'
+        | 'round.replay_used',
       payload: unknown,
     ) {
       assert();

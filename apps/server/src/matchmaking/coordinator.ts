@@ -304,6 +304,13 @@ export function createCoordinator(options: {
   }
   const api = {
     scope,
+    matchScope(session: GameSession, matchId: string) {
+      assert(session);
+      const place = user(session.principal.playerId).place;
+      if (place.kind !== 'match' || place.matchId !== matchId || place.terminal)
+        throw new TransportFailure('UNAUTHORIZED');
+      return scope(session);
+    },
     canConnect(id: string, replacing = false) {
       reclaim(id);
       const u = users.get(id);

@@ -1,6 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { describe, it, expect } from 'vitest';
-import { testRuntime, pair, call, sync } from './runtime-fixtures.js';
+import {
+  testRuntime,
+  pair,
+  call,
+  completeInitialPlayback,
+  sync,
+} from './runtime-fixtures.js';
 describe('runtime registry over real sockets with isolated component store', () => {
   it('creates exactly one match and advances a durable correct answer without exposing private state', async () => {
     const h = await testRuntime();
@@ -17,6 +23,11 @@ describe('runtime registry over real sockets with isolated component store', () 
           roundId: round.roundId,
           audioVersion: round.audio.audioVersion,
         });
+      await completeInitialPlayback(h, [a, b], {
+        matchId: snapshot.matchId,
+        roundId: round.roundId,
+        audioVersion: round.audio.audioVersion,
+      });
       const record = h.records.get(snapshot.matchId)!;
       await h.advance(record.state.round!.monoSchedule!.typingStartAt);
       const attemptId = randomUUID();
@@ -181,6 +192,11 @@ it.each(['winner', 'draw'] as const)(
             roundId: round.roundId,
             audioVersion: round.audio.audioVersion,
           });
+        await completeInitialPlayback(h, [a, b], {
+          matchId,
+          roundId: round.roundId,
+          audioVersion: round.audio.audioVersion,
+        });
         const schedule = h.records.get(matchId)!.state.round!.monoSchedule!;
         await h.advance(
           outcome === 'winner' ? schedule.typingStartAt : schedule.deadlineAt,
@@ -235,6 +251,11 @@ it('continues next-round lifecycle after a committed publication hook fails', as
         roundId: s.round!.roundId,
         audioVersion: s.round!.audio.audioVersion,
       });
+    await completeInitialPlayback(h, [a, b], {
+      matchId: s.matchId,
+      roundId: s.round!.roundId,
+      audioVersion: s.round!.audio.audioVersion,
+    });
     await h.advance(
       h.records.get(s.matchId)!.state.round!.monoSchedule!.typingStartAt,
     );
